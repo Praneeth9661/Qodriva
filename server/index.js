@@ -21,10 +21,16 @@ if (!['postgres', 'mysql', 'memory'].includes(STORAGE_MODE)) {
   throw new Error('STORAGE_MODE must be "postgres", "mysql", or "memory".');
 }
 
-const allowedClientOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const developmentOrigins = process.env.NODE_ENV === 'production'
+  ? []
+  : ['http://localhost:5173', 'http://localhost:5000'];
+const allowedClientOrigins = [
+  ...developmentOrigins,
+  ...(process.env.CLIENT_ORIGIN || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+];
 
 app.use(cors({
   origin: (origin, callback) => callback(null, !origin || allowedClientOrigins.includes(origin)),

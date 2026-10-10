@@ -174,6 +174,22 @@ test('problem detail returns public fields and a not-found response for unknown 
   assert.deepEqual(await invalidProblemId.json(), { message: 'Problem not found.' });
 });
 
+test('local frontend and same-origin app requests pass origin checks', async () => {
+  for (const origin of ['http://localhost:5173', 'http://localhost:5000']) {
+    const response = await request('/api/auth/logout', {
+      method: 'POST',
+      headers: { Origin: origin },
+    });
+    assert.equal(response.status, 204, `${origin} should be allowed`);
+  }
+
+  const untrustedOrigin = await request('/api/auth/logout', {
+    method: 'POST',
+    headers: { Origin: 'https://untrusted.example' },
+  });
+  assert.equal(untrustedOrigin.status, 403);
+});
+
 test('verified submissions are account-scoped and award points only once', async () => {
   const suffix = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const register = async (username) => {
