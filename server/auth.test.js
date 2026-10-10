@@ -211,6 +211,7 @@ test('verified submissions are account-scoped and award points only once', async
   const originalFetch = global.fetch;
   let outputMode = 'wrong';
   let asyncPolling = false;
+  let omitQueuedStatus = false;
   let asyncOutput = '';
   let pollCount = 0;
   const judgePayloads = [];
@@ -231,7 +232,9 @@ test('verified submissions are account-scoped and award points only once', async
       : '0 1';
     if (asyncPolling) {
       asyncOutput = stdout;
-      return new Response(JSON.stringify({ token: 'test-token', status: { id: 1, description: 'In Queue' } }), {
+      const response = { token: 'test-token' };
+      if (!omitQueuedStatus) response.status = { id: 1, description: 'In Queue' };
+      return new Response(JSON.stringify(response), {
         status: 201,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -273,7 +276,15 @@ test('verified submissions are account-scoped and award points only once', async
     assert.equal((await polledAccepted.json()).status, 'Accepted');
     assert.equal(pollCount, 6);
 
+    omitQueuedStatus = true;
+    pollCount = 0;
+    const missingInitialStatus = await submit(firstCookie, 'run');
+    assert.equal(missingInitialStatus.status, 200);
+    assert.equal((await missingInitialStatus.json()).status, 'Run complete');
+    assert.equal(pollCount, 2);
+
     asyncPolling = false;
+    omitQueuedStatus = false;
     const repeatedAccepted = await submit(firstCookie);
     assert.equal(repeatedAccepted.status, 200);
     assert.equal((await repeatedAccepted.json()).status, 'Accepted');

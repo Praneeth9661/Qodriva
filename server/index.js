@@ -788,12 +788,9 @@ app.post('/api/submissions', requireAuth, async (req, res) => {
         }),
       });
       let result = submission;
-      if (submission.status?.id === 1 || submission.status?.id === 2) {
-        if (typeof submission.token !== 'string' || !submission.token) {
-          throw new Error('The code execution service queued the submission without returning a token.');
-        }
+      if (typeof submission.token === 'string' && submission.token) {
         const deadline = Date.now() + timeoutMs;
-        while (result.status?.id === 1 || result.status?.id === 2) {
+        while (result.status?.id === undefined || result.status?.id === 1 || result.status?.id === 2) {
           if (Date.now() >= deadline) {
             throw new Error('Code execution timed out while waiting for the Judge0 result.');
           }
@@ -803,6 +800,9 @@ app.post('/api/submissions', requireAuth, async (req, res) => {
             { method: 'GET' },
           );
         }
+      }
+      if (!Number.isInteger(result.status?.id)) {
+        throw new Error('The code execution service did not return a final submission status.');
       }
 
       const judgeStatus = result.status?.description || 'Execution error';
