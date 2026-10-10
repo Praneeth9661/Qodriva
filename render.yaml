@@ -20,6 +20,8 @@ services:
         generateValue: true
       - key: CLIENT_ORIGIN
         value: https://client-jade-one-10.vercel.app
+      - key: JUDGE0_API_URL
+        value: https://ce.judge0.com
 databases:
   - name: qodriva-db
     databaseName: qodriva

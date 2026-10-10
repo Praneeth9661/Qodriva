@@ -51,6 +51,8 @@ VITE_API_URL=https://your-qodriva-api.onrender.com
 
 The frontend sends credentialed requests to this API. Production auth cookies use `SameSite=None; Secure` for the cross-site Vercel-to-Render session, and the API only permits configured `CLIENT_ORIGIN` values. Judge0 must also use a public API URL; a localhost Judge0 URL only works from the developer machine. If no Judge0 service is configured, submissions remain disabled and return a configuration error.
 
+The Render Blueprint uses the public Judge0 CE endpoint for testing. It is a shared service with no availability or capacity guarantee; do not rely on it for production workloads or send it private source code. For production, use a Judge0 provider you control and set `JUDGE0_API_URL` (and any required credentials) in the Render service environment.
+
 ## Code execution
 
 In frontend-only mode, code execution is disabled; the editor and execution-result UI are previews only. User-submitted source code is never executed by the Express process. In server mode, submissions require a signed-in user. To enable isolated execution, configure a Judge0-compatible API in `server/.env` using the keys in `server/.env.example`:
