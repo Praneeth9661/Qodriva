@@ -14,11 +14,11 @@ const app = express();
 const PORT = Number(process.env.PORT || 5000);
 const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
 const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? '' : crypto.randomBytes(32).toString('hex'));
-const STORAGE_MODE = process.env.STORAGE_MODE || (process.env.NODE_ENV === 'production' ? 'mysql' : 'memory');
+const STORAGE_MODE = process.env.STORAGE_MODE || (process.env.NODE_ENV === 'production' ? 'postgres' : 'memory');
 const scrypt = promisify(crypto.scrypt);
 
-if (!['mysql', 'memory'].includes(STORAGE_MODE)) {
-  throw new Error('STORAGE_MODE must be either "mysql" or "memory".');
+if (!['postgres', 'mysql', 'memory'].includes(STORAGE_MODE)) {
+  throw new Error('STORAGE_MODE must be "postgres", "mysql", or "memory".');
 }
 
 const allowedClientOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
@@ -117,21 +117,31 @@ async function initializeDatabase() {
   let database;
   try {
     const { Sequelize, DataTypes } = require('sequelize');
-    const dbName = process.env.DB_NAME || 'fullstack_app';
-    const dbUser = process.env.DB_USER || 'root';
-    const dbPassword = process.env.DB_PASSWORD || '';
-    const dbHost = process.env.DB_HOST || 'localhost';
-    const dbPort = Number(process.env.DB_PORT || 3306);
+    if (STORAGE_MODE === 'postgres') {
+      if (!process.env.DATABASE_URL) {
+        throw new Error('DATABASE_URL must be set when STORAGE_MODE=postgres.');
+      }
+      database = new Sequelize(process.env.DATABASE_URL, {
+        dialect: 'postgres',
+        logging: false,
+      });
+    } else {
+      const dbName = process.env.DB_NAME || 'fullstack_app';
+      const dbUser = process.env.DB_USER || 'root';
+      const dbPassword = process.env.DB_PASSWORD || '';
+      const dbHost = process.env.DB_HOST || 'localhost';
+      const dbPort = Number(process.env.DB_PORT || 3306);
 
-    database = new Sequelize(dbName, dbUser, dbPassword, {
-      host: dbHost,
-      port: dbPort,
-      dialect: 'mysql',
-      logging: false,
-      dialectOptions: {
-        connectTimeout: 20000,
-      },
-    });
+      database = new Sequelize(dbName, dbUser, dbPassword, {
+        host: dbHost,
+        port: dbPort,
+        dialect: 'mysql',
+        logging: false,
+        dialectOptions: {
+          connectTimeout: 20000,
+        },
+      });
+    }
 
     await database.authenticate();
     sequelize = database;
@@ -209,7 +219,7 @@ async function initializeDatabase() {
     );
 
     await sequelize.sync({ alter: true });
-    console.log('Connected to MySQL database');
+    console.log(`Connected to ${STORAGE_MODE} database`);
     return true;
   } catch (error) {
     await database?.close().catch((closeError) => {
@@ -218,8 +228,11 @@ async function initializeDatabase() {
     sequelize = null;
     UserModel = null;
     SubmissionModel = null;
-    console.error('MySQL storage initialization failed:', error.message);
-    throw new Error('STORAGE_MODE=mysql is configured, but MySQL could not be initialized. Check DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, and ensure the database server is running.', { cause: error });
+    console.error(`${STORAGE_MODE} storage initialization failed:`, error.message);
+    const configurationError = STORAGE_MODE === 'postgres'
+      ? 'STORAGE_MODE=postgres is configured, but PostgreSQL could not be initialized. Check DATABASE_URL and ensure the database is available.'
+      : 'STORAGE_MODE=mysql is configured, but MySQL could not be initialized. Check DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, and ensure the database server is running.';
+    throw new Error(configurationError, { cause: error });
   }
 }
 
@@ -562,7 +575,7 @@ function requireAdmin(req, res, next) {
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
-    storage: UserModel ? 'mysql' : 'memory',
+    storage: UserModel ? STORAGE_MODE : 'memory',
     storageMode: STORAGE_MODE,
     judge0: Boolean(process.env.JUDGE0_API_URL),
   });
@@ -901,7 +914,7 @@ if (fs.existsSync(clientDistPath)) {
 
 app.get('/', (_req, res) => {
   res.json({
-    app: 'Full-stack React + Express + MySQL tutorial app',
+    app: 'Qodriva API',
     endpoints: ['/api/health', '/api/users'],
   });
 });

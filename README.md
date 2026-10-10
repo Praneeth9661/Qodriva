@@ -18,7 +18,7 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite (usually `http://localhost:5173`). By default, Vite proxies `/api` requests to `http://localhost:5000`, and the frontend uses the Express API. The server defaults to in-memory storage in development; set `STORAGE_MODE=mysql` only when MySQL is available. Without a Judge0-compatible service, code execution endpoints return a clear configuration error.
+Open the local URL printed by Vite (usually `http://localhost:5173`). By default, Vite proxies `/api` requests to `http://localhost:5000`, and the frontend uses the Express API. The server defaults to in-memory storage in development. Set `STORAGE_MODE=mysql` with the `DB_*` settings or `STORAGE_MODE=postgres` with `DATABASE_URL` when a database is available. Without a Judge0-compatible service, code execution endpoints return a clear configuration error.
 
 For a UI-only preview without starting the backend, set `VITE_API_MODE=demo` in `client/.env` and restart Vite. Demo profiles are saved in browser storage, passwords are not saved or checked, and **Run** and **Submit** do not execute code. The account-creation form includes a password-strength hint and **Explore as a guest** skips profile setup.
 
@@ -28,7 +28,7 @@ Run the API authentication tests from the `server` directory with `npm test`.
 
 In API mode, accounts can sign in with either their username or email. Passwords are hashed with Node's scrypt before storage. Successful sign-in issues a signed JWT in an `HttpOnly`, `SameSite=Strict` cookie; the token is never stored in browser JavaScript storage. Sessions last 8 hours, or 7 days when “Keep me signed in” is selected. Login and registration attempts are rate-limited. In UI-only mode, demo profile data is saved in browser storage, but passwords are not saved or checked.
 
-Copy `server/.env.example` to `server/.env`. For persistent accounts and submissions, install and start MySQL, create the configured database (default `fullstack_app`), set `STORAGE_MODE=mysql`, and provide the database host, port, database name, username, and password. The MySQL account must be able to create and alter the app's `users` and `submissions` tables. The API creates/updates these tables at startup.
+Copy `server/.env.example` to `server/.env`. For persistent accounts and submissions, configure a reachable MySQL database with `STORAGE_MODE=mysql` and the `DB_*` values, or a PostgreSQL database with `STORAGE_MODE=postgres` and `DATABASE_URL`. The database user must be able to create and alter the app's `users` and `submissions` tables. The API creates/updates these tables at startup.
 
 Set a private JWT secret before deploying. Generate one with:
 
@@ -40,7 +40,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ## Deploy the API on Render
 
-The root `render.yaml` configures the Express API service and its health check. Connect this repository to Render as a Blueprint and provide `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` from a publicly reachable MySQL provider. The local MySQL host (`localhost`) cannot be used by Render. Render generates `JWT_SECRET` for the service. Set `CLIENT_ORIGIN` to the exact Vercel site origin if its domain changes.
+The root `render.yaml` configures the Express API, health check, and a Render Postgres database. Connect this repository to Render as a Blueprint and sync the Blueprint so Render creates the database and connects it to the API through `DATABASE_URL`. The included database uses Render's Free plan for testing; it expires after 30 days, has no backups, and Render deletes its data after the 14-day post-expiration grace period unless you upgrade it. Upgrade the database before expiration for persistent data. Render generates `JWT_SECRET` for the service. Set `CLIENT_ORIGIN` to the exact Vercel site origin if its domain changes.
 
 After the API deploys, set these production environment variables in Vercel and redeploy the frontend:
 
