@@ -1,8 +1,23 @@
+
 :root {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  color-scheme: dark;
+  background: #080b12;
+  color: #e8edf7;
+
+  --bg-primary: #080b12;
+  --bg-secondary: #101622;
+  --bg-card: rgba(20, 28, 43, 0.82);
+  --accent: #58e0a0;
+  --accent-hover: #79f0b6;
+  --text-primary: #e8edf7;
+  --text-secondary: #929db2;
+  --border: rgba(148, 163, 184, 0.16);
 }
 
 * {
@@ -12,18 +27,245 @@
 html {
   min-width: 320px;
   min-height: 100%;
+  background: var(--bg-primary);
+  scroll-behavior: smooth;
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+  background:
+    radial-gradient(ellipse at 15% 0%, rgba(38, 94, 78, 0.15), transparent 38%),
+    radial-gradient(ellipse at 90% 10%, rgba(62, 77, 145, 0.12), transparent 35%),
+    var(--bg-primary);
+  color: var(--text-primary);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #58a98a;
-  outline-offset: 2px;
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+button {
+  cursor: pointer;
+}
+
+::selection {
+  background: rgba(88, 224, 160, 0.3);
+  color: #ffffff;
+}
+
+/* ===== QODRIVA GLASSMORPHISM UI ===== */
+
+/* Main authentication card */
+.auth-screen .auth-card {
+  background: rgba(24, 26, 48, 0.55) !important;
+  backdrop-filter: blur(25px) saturate(150%);
+  -webkit-backdrop-filter: blur(25px) saturate(150%);
+
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 24px;
+
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+
+  transition: all 0.3s ease;
+}
+
+/* Subtle hover effect */
+.auth-screen .auth-card:hover {
+  border-color: rgba(82, 217, 237, 0.35);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(82, 217, 237, 0.08);
+}
+
+/* Input fields */
+.auth-screen .auth-form > input,
+.auth-screen .password-field > input {
+  color: #ffffff !important;
+  background: rgba(8, 10, 25, 0.4) !important;
+
+  border: 1px solid rgba(180, 185, 225, 0.25);
+  border-radius: 12px;
+
+  outline: none;
+  transition: all 0.25s ease;
+}
+
+/* Placeholder text */
+.auth-screen .auth-form > input::placeholder,
+.auth-screen .password-field > input::placeholder {
+  color: #b4b7d0 !important;
+  opacity: 1;
+}
+
+/* Input focus glow */
+.auth-screen .auth-form > input:focus,
+.auth-screen .password-field > input:focus {
+  border-color: #52d9ed;
+  box-shadow: 0 0 0 3px rgba(82, 217, 237, 0.15);
+}
+
+/* Labels and text */
+.auth-screen .auth-card label,
+.auth-screen .auth-card p {
+  color: #e4e7f5;
+}
+
+/* Gradient background for the side panel */
+.auth-screen .auth-side {
+  background:
+    radial-gradient(
+      circle at 80% 20%,
+      rgba(112, 83, 237, 0.22),
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 20% 80%,
+      rgba(40, 178, 202, 0.16),
+      transparent 42%
+    ),
+    #0b0e1b;
+}
+
+/* Submit button */
+.auth-screen .auth-submit {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  transition: all 0.25s ease;
+}
+
+.auth-screen .auth-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(82, 217, 237, 0.2);
+}
+
+/* ===== QODRIVA VISIBLE GLASSMORPHISM ===== */
+
+/* Glass login card */
+.auth-screen .auth-card {
+  background: rgba(24, 26, 48, 0.28) !important;
+
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 26px !important;
+
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.18) !important;
+}
+
+/* Glass input fields */
+.auth-screen .auth-form > input,
+.auth-screen .password-field > input {
+  background: rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+}
+
+/* Glass tab container */
+.auth-screen .auth-card button {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Cyan glass glow on focus */
+.auth-screen .auth-form > input:focus,
+.auth-screen .password-field > input:focus {
+  border-color: rgba(82, 217, 237, 0.9) !important;
+  box-shadow: 0 0 18px rgba(82, 217, 237, 0.18);
+}
+
+/* Glass effect on the left illustration panel */
+.auth-screen .auth-side {
+  background:
+    radial-gradient(
+      circle at 75% 20%,
+      rgba(112, 83, 237, 0.2),
+      transparent 45%
+    ),
+    radial-gradient(
+      circle at 20% 75%,
+      rgba(40, 178, 202, 0.15),
+      transparent 45%
+    ),
+    #0b0e1b;
+}
+
+/* QODRIVA — FROSTED GLASS UI */
+
+.auth-screen .auth-card {
+  background: rgba(255, 255, 255, 0.075) !important;
+  backdrop-filter: blur(30px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(180%) !important;
+
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 26px !important;
+
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Frosted glass input fields */
+.auth-screen .auth-form > input,
+.auth-screen .password-field > input {
+  background: rgba(255, 255, 255, 0.09) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 13px !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.auth-screen .auth-form > input::placeholder,
+.auth-screen .password-field > input::placeholder {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.auth-screen .auth-form > input:focus,
+.auth-screen .password-field > input:focus {
+  border-color: rgba(103, 232, 249, 0.8) !important;
+  box-shadow: 0 0 22px rgba(34, 211, 238, 0.18);
+}
+
+/* Translucent tabs */
+.auth-screen .auth-card button {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Purple and cyan ambient lighting */
+.auth-screen .auth-side {
+  background:
+    radial-gradient(
+      circle at 20% 25%,
+      rgba(139, 92, 246, 0.3),
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 80% 70%,
+      rgba(34, 211, 238, 0.2),
+      transparent 45%
+    ),
+    #0b0e1b;
 }

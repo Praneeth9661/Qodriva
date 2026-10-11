@@ -1,0 +1,4011 @@
+﻿
+
+========== .\src\App.jsx ==========
+
+import { useEffect, useMemo, useState } from 'react'
+import { MetalFx } from 'metal-fx'
+import { ThinkingOrb } from 'thinking-orbs'
+import './App.css'
+
+const languages = ['JavaScript', 'Python', 'Java', 'C++', 'C']
+const templates = {
+  JavaScript: "const fs = require('fs');\nconst values = fs.readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst count = values[0];\nconst nums = values.slice(1, count + 1);\nconst target = values[count + 1];\nconst seen = new Map();\nfor (let i = 0; i < nums.length; i++) {\n  const complement = target - nums[i];\n  if (seen.has(complement)) {\n    console.log(`${seen.get(complement)} ${i}`);\n    break;\n  }\n  seen.set(nums[i], i);\n}\n",
+  Python: 'import sys\nvalues = list(map(int, sys.stdin.read().split()))\ncount = values[0]\nnums = values[1:count + 1]\ntarget = values[count + 1]\nseen = {}\nfor index, value in enumerate(nums):\n    complement = target - value\n    if complement in seen:\n        print(seen[complement], index)\n        break\n    seen[value] = index\n',
+  Java: 'import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        int count = scanner.nextInt();\n        int[] nums = new int[count];\n        for (int i = 0; i < count; i++) nums[i] = scanner.nextInt();\n        int target = scanner.nextInt();\n        Map<Integer, Integer> seen = new HashMap<>();\n        for (int i = 0; i < count; i++) {\n            int complement = target - nums[i];\n            if (seen.containsKey(complement)) {\n                System.out.println(seen.get(complement) + " " + i);\n                break;\n            }\n            seen.put(nums[i], i);\n        }\n    }\n}\n',
+  'C++': '#include <iostream>\n#include <unordered_map>\n#include <vector>\nusing namespace std;\n\nint main() {\n    int count;\n    cin >> count;\n    vector<int> nums(count);\n    for (int& value : nums) cin >> value;\n    int target;\n    cin >> target;\n    unordered_map<int, int> seen;\n    for (int i = 0; i < count; i++) {\n        int complement = target - nums[i];\n        if (seen.count(complement)) {\n            cout << seen[complement] << " " << i << endl;\n            break;\n        }\n        seen[nums[i]] = i;\n    }\n}\n',
+  C: '#include <stdio.h>\n\nint main(void) {\n    int count;\n    if (scanf("%d", &count) != 1) return 0;\n    int nums[10000];\n    for (int i = 0; i < count; i++) scanf("%d", &nums[i]);\n    int target;\n    scanf("%d", &target);\n    for (int i = 0; i < count; i++) {\n        for (int j = i + 1; j < count; j++) {\n            if (nums[i] + nums[j] == target) {\n                printf("%d %d\\n", i, j);\n                return 0;\n            }\n        }\n    }\n    return 0;\n}\n',
+}
+const blankTemplates = {
+  JavaScript: "const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim();\n// Parse the input and print your answer.\n",
+  Python: 'import sys\ninput_data = sys.stdin.read().strip()\n# Parse the input and print your answer.\n',
+  Java: 'import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner scanner = new Scanner(System.in);\n        // Parse the input and print your answer.\n    }\n}\n',
+  'C++': '#include <iostream>\n#include <string>\nusing namespace std;\n\nint main() {\n    // Parse the input and print your answer.\n    return 0;\n}\n',
+  C: '#include <stdio.h>\n\nint main(void) {\n    // Parse the input and print your answer.\n    return 0;\n}\n',
+}
+
+const demoProblems = [
+  { id: 1, title: 'Two Sum', difficulty: 'Easy', acceptance: 'â€”', topics: ['Array', 'Hash Table'], testInput: '4 2 7 11 15\n9', description: 'Given an array of integers nums and an integer target, return the indices of the two numbers such that they add up to target.', examples: [{ input: 'nums = [2,7,11,15], target = 9', output: '[0,1]' }, { input: 'nums = [3,2,4], target = 6', output: '[1,2]' }], constraints: ['2 â‰¤ nums.length â‰¤ 10â´', 'âˆ’10â¹ â‰¤ nums[i] â‰¤ 10â¹', 'Exactly one valid answer exists.'] },
+  { id: 2, title: 'Valid Parentheses', difficulty: 'Easy', acceptance: 'â€”', topics: ['String', 'Stack'], testInput: '()', description: 'Given a string s containing just the characters (), {}, and [], determine if the input string is valid.', examples: [{ input: 's = "()"', output: 'true' }, { input: 's = "([)]"', output: 'false' }], constraints: ['1 â‰¤ s.length â‰¤ 10â´', 's consists of parentheses only: ()[]{}.'] },
+  { id: 3, title: 'Merge Intervals', difficulty: 'Medium', acceptance: 'â€”', topics: ['Array', 'Sorting'], testInput: '4\n1 3\n2 6\n8 10\n15 18', description: 'Given an array of intervals where intervals[i] = [startáµ¢, endáµ¢], merge all overlapping intervals and return an array of the non-overlapping intervals.', examples: [{ input: 'intervals = [[1,3],[2,6],[8,10],[15,18]]', output: '[[1,6],[8,10],[15,18]]' }], constraints: ['1 â‰¤ intervals.length â‰¤ 10â´', 'intervals[i].length == 2', 'Intervals are sorted by their start value.'] },
+  { id: 4, title: 'Longest Substring Without Repeating Characters', difficulty: 'Medium', acceptance: 'â€”', topics: ['String', 'Sliding Window'], testInput: 'abcabcbb', description: 'Given a string s, find the length of the longest substring without repeating characters.', examples: [{ input: 's = "abcabcbb"', output: '3' }, { input: 's = "bbbbb"', output: '1' }], constraints: ['0 â‰¤ s.length â‰¤ 5 Ã— 10â´', 's consists of English letters, digits, symbols and spaces.'] },
+  { id: 5, title: 'Binary Tree Level Order Traversal', difficulty: 'Medium', acceptance: 'â€”', topics: ['Tree', 'Breadth-First Search'], testInput: '3 9 20 null null 15 7', description: 'Given the root of a binary tree, return the level order traversal of its nodesâ€™ values from left to right, level by level.', examples: [{ input: 'root = [3,9,20,null,null,15,7]', output: '[[3],[9,20],[15,7]]' }], constraints: ['The number of nodes in the tree is in [0, 2000].', 'âˆ’1000 â‰¤ Node.val â‰¤ 1000'] },
+  { id: 6, title: 'Coin Change', difficulty: 'Medium', acceptance: 'â€”', topics: ['Dynamic Programming'], testInput: '3 1 2 5\n11', description: 'You are given an integer array coins representing coins of different denominations and an integer amount. Return the fewest number of coins needed to make up that amount.', examples: [{ input: 'coins = [1,2,5], amount = 11', output: '3' }], constraints: ['1 â‰¤ coins.length â‰¤ 12', '0 â‰¤ amount â‰¤ 10â´'] },
+  { id: 7, title: 'Course Schedule', difficulty: 'Medium', acceptance: 'â€”', topics: ['Graph', 'Depth-First Search'], testInput: '2 1\n1 0', description: 'There are numCourses courses and prerequisites. Return true if it is possible to finish all courses.', examples: [{ input: 'numCourses = 2, prerequisites = [[1,0]]', output: 'true' }], constraints: ['1 â‰¤ numCourses â‰¤ 2000', '0 â‰¤ prerequisites.length â‰¤ 5000'] },
+  { id: 8, title: 'Trapping Rain Water', difficulty: 'Hard', acceptance: 'â€”', topics: ['Array', 'Two Pointers'], testInput: '12 0 1 0 2 1 0 1 3 2 1 2 1', description: 'Given n non-negative integers representing an elevation map, compute how much water it can trap after raining.', examples: [{ input: 'height = [0,1,0,2,1,0,1,3,2,1,2,1]', output: '6' }], constraints: ['n == height.length', '1 â‰¤ n â‰¤ 2 Ã— 10â´', '0 â‰¤ height[i] â‰¤ 10âµ'] },
+]
+
+const frontendOnlyMode = import.meta.env.VITE_API_MODE === 'demo'
+const apiBaseUrl = String(import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
+const demoAccountsKey = 'codearena.demo-accounts.v1'
+const demoSessionKey = 'codearena.demo-session.v1'
+const demoTabSessionKey = 'codearena.demo-tab-session.v1'
+
+function apiFetch(path, options = {}) {
+  return fetch(`${apiBaseUrl}${path}`, { ...options, credentials: 'include' })
+}
+
+function readDemoAccounts() {
+  const storedAccounts = window.localStorage.getItem(demoAccountsKey)
+  if (storedAccounts === null) return []
+
+  const accounts = JSON.parse(storedAccounts)
+  if (!Array.isArray(accounts) || accounts.some((account) => !account || typeof account.username !== 'string')) {
+    throw new Error('The saved local demo profiles are invalid. Clear this siteâ€™s local storage to start fresh.')
+  }
+  return accounts
+}
+
+function createDemoAccount(username, email, existingAccount = null) {
+  return {
+    ...existingAccount,
+    id: existingAccount?.id || `demo-${username.toLowerCase()}`,
+    username,
+    name: username,
+    email,
+    role: 'Member',
+    status: 'Active',
+    points: existingAccount?.points || 0,
+    solvedCount: existingAccount?.solvedCount || 0,
+    streak: existingAccount?.streak || 0,
+    solvedIds: existingAccount?.solvedIds || [],
+    difficultyCounts: existingAccount?.difficultyCounts || { Easy: 0, Medium: 0, Hard: 0 },
+    rank: existingAccount?.rank || null,
+    dailyProblemId: existingAccount?.dailyProblemId || 1,
+    dailySolved: existingAccount?.dailySolved || false,
+  }
+}
+
+function getPasswordStrength(password) {
+  if (!password) return 0
+  return [
+    password.length >= 8,
+    /[a-z]/.test(password) && /[A-Z]/.test(password),
+    /\d/.test(password),
+    /[^A-Za-z0-9]/.test(password),
+  ].filter(Boolean).length
+}
+
+function readDemoSession() {
+  try {
+    const sessionUsername = window.localStorage.getItem(demoSessionKey)
+      || window.sessionStorage.getItem(demoTabSessionKey)
+    const account = sessionUsername
+      ? readDemoAccounts().find((profile) => profile.username.toLowerCase() === sessionUsername) || null
+      : null
+    return { account, error: '' }
+  } catch (error) {
+    return { account: null, error: `Could not load your local demo profile: ${error.message}` }
+  }
+}
+
+function Icon({ name }) {
+  const icons = {
+    grid: 'â–¦',
+    code: '</>',
+    trophy: 'â™œ',
+    user: 'â—‰',
+    search: 'âŒ•',
+    bell: 'â™§',
+    chevron: 'âŒ„',
+    check: 'âœ“',
+    play: 'â–¶',
+    send: 'â†‘',
+    flame: 'â™¨',
+    clock: 'â—·',
+    bars: 'â–¤',
+  }
+  return <span className={`icon icon-${name}`} aria-hidden="true">{icons[name]}</span>
+}
+
+function App() {
+  const [demoSession] = useState(() => frontendOnlyMode ? readDemoSession() : { account: null, error: '' })
+  const [account, setAccount] = useState(demoSession.account)
+  const [authLoading, setAuthLoading] = useState(!frontendOnlyMode)
+  const [authMode, setAuthMode] = useState('login')
+  const [authForm, setAuthForm] = useState({ username: '', identifier: '', email: '', password: '', confirmPassword: '', rememberMe: false })
+  const [showPassword, setShowPassword] = useState(false)
+  const [authSubmitting, setAuthSubmitting] = useState(false)
+  const [authError, setAuthError] = useState(demoSession.error)
+  const [problems, setProblems] = useState(demoProblems)
+  const [leaderboard, setLeaderboard] = useState([])
+  const [activeView, setActiveView] = useState('Problems')
+  const [selectedId, setSelectedId] = useState(1)
+  const [query, setQuery] = useState('')
+  const [difficulty, setDifficulty] = useState('All difficulties')
+  const [topic, setTopic] = useState('All topics')
+  const [language, setLanguage] = useState('JavaScript')
+  const [code, setCode] = useState(templates.JavaScript)
+  const [output, setOutput] = useState(null)
+  const [running, setRunning] = useState(false)
+  const [apiError, setApiError] = useState('')
+  const [catalogError, setCatalogError] = useState(false)
+  const [stdin, setStdin] = useState('4 2 7 11 15\n9')
+
+  useEffect(() => {
+    if (frontendOnlyMode) return undefined
+
+    let cancelled = false
+    apiFetch('/api/auth/me')
+      .then(async (response) => {
+        if (response.ok) {
+          const data = await response.json()
+          if (!cancelled) setAccount({ ...data.user, solvedIds: data.solvedIds, difficultyCounts: data.difficultyCounts, rank: data.rank, dailyProblemId: data.dailyProblemId, dailySolved: data.dailySolved })
+        } else if (response.status !== 401) {
+          throw new Error('Could not verify your session.')
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) setAuthError(error.message)
+      })
+      .finally(() => {
+        if (!cancelled) setAuthLoading(false)
+      })
+    apiFetch('/api/problems')
+      .then((response) => {
+        if (!response.ok) throw new Error('Problems API is unavailable')
+        return response.json()
+      })
+      .then((data) => {
+        if (!cancelled && Array.isArray(data) && data.length) setProblems(data)
+      })
+      .catch(() => {
+        if (!cancelled) setCatalogError(true)
+      })
+    apiFetch('/api/leaderboard')
+      .then((response) => {
+        if (!response.ok) throw new Error('Leaderboard API is unavailable')
+        return response.json()
+      })
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) setLeaderboard(data)
+      })
+      .catch(() => {
+        if (!cancelled) setCatalogError(true)
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (frontendOnlyMode || !account?.id) return undefined
+
+    let cancelled = false
+    Promise.all([
+      apiFetch('/api/auth/me').then(async (response) => {
+        if (!response.ok) throw new Error('Could not refresh your coding progress.')
+        return response.json()
+      }),
+      apiFetch('/api/leaderboard').then(async (response) => {
+        if (!response.ok) throw new Error('Could not refresh the leaderboard.')
+        return response.json()
+      }),
+    ]).then(([progress, rankings]) => {
+      if (cancelled) return
+      setAccount({
+        ...progress.user,
+        solvedIds: progress.solvedIds,
+        difficultyCounts: progress.difficultyCounts,
+        rank: progress.rank,
+        dailyProblemId: progress.dailyProblemId,
+        dailySolved: progress.dailySolved,
+      })
+      setLeaderboard(rankings)
+    }).catch((error) => {
+      if (!cancelled) setApiError(error.message)
+    })
+    return () => { cancelled = true }
+  }, [account?.id])
+
+  const selectedProblem = problems.find((problem) => problem.id === selectedId) || problems[0]
+  const topics = useMemo(() => ['All topics', ...new Set(problems.flatMap((problem) => problem.topics || []))], [problems])
+  const filteredProblems = useMemo(() => problems.filter((problem) => {
+    const matchesQuery = `${problem.title} ${(problem.topics || []).join(' ')}`.toLowerCase().includes(query.toLowerCase())
+    return matchesQuery && (difficulty === 'All difficulties' || problem.difficulty === difficulty) && (topic === 'All topics' || (problem.topics || []).includes(topic))
+  }), [problems, query, difficulty, topic])
+  const username = account?.username || 'Coder'
+  const initials = username.slice(0, 2).toUpperCase()
+  const dailyProblem = problems.find((problem) => problem.id === account?.dailyProblemId) || problems[0]
+  const displayedLeaderboard = frontendOnlyMode
+    ? account?.solvedCount > 0
+      ? [{ rank: 1, username: account.username, solved: account.solvedCount, points: account.points }]
+      : []
+    : leaderboard
+
+  const handleAuthChange = (event) => {
+    const { name, value, checked, type } = event.target
+    setAuthForm((current) => ({ ...current, [name]: type === 'checkbox' ? checked : value }))
+  }
+
+  const handleAuthModeChange = (mode) => {
+    setAuthMode(mode)
+    setAuthError('')
+    setAuthForm((current) => ({ ...current, password: '', confirmPassword: '' }))
+  }
+
+  const handleGuestDemo = () => {
+    try {
+      const savedAccounts = readDemoAccounts()
+      let username = 'Explorer'
+      let suffix = 2
+      while (savedAccounts.some((profile) => profile.username.toLowerCase() === username.toLowerCase())) {
+        username = `Explorer${suffix}`
+        suffix += 1
+      }
+
+      const guestAccount = createDemoAccount(username, `${username.toLowerCase()}@local.demo`)
+      window.localStorage.setItem(demoAccountsKey, JSON.stringify([...savedAccounts, guestAccount]))
+      window.sessionStorage.setItem(demoTabSessionKey, guestAccount.username.toLowerCase())
+      window.localStorage.removeItem(demoSessionKey)
+      setAuthError('')
+      setAccount(guestAccount)
+    } catch (error) {
+      setAuthError(`Could not start a local demo profile: ${error.message}`)
+    }
+  }
+
+  const handleAuthSubmit = async (event) => {
+    event.preventDefault()
+    setAuthError('')
+
+    if (authMode === 'register') {
+      if (authForm.password.length < 8) {
+        setAuthError('Use at least 8 characters for your password.')
+        return
+      }
+      if (authForm.password !== authForm.confirmPassword) {
+        setAuthError('Those passwords do not match. Try again.')
+        return
+      }
+    }
+
+    setAuthSubmitting(true)
+    try {
+      if (frontendOnlyMode) {
+        const savedAccounts = readDemoAccounts()
+        let localAccount
+
+        if (authMode === 'register') {
+          const username = authForm.username.trim()
+          const email = authForm.email.trim().toLowerCase()
+          const existingAccount = savedAccounts.find((profile) => profile.username.toLowerCase() === username.toLowerCase())
+          const emailInUse = savedAccounts.some((profile) => profile.email.toLowerCase() === email && profile.username.toLowerCase() !== username.toLowerCase())
+          if (emailInUse) throw new Error('That email is already used by another local demo profile.')
+
+          localAccount = createDemoAccount(username, email, existingAccount)
+          const nextAccounts = existingAccount
+            ? savedAccounts.map((profile) => profile.username.toLowerCase() === username.toLowerCase() ? localAccount : profile)
+            : [...savedAccounts, localAccount]
+          window.localStorage.setItem(demoAccountsKey, JSON.stringify(nextAccounts))
+        } else {
+          const identifier = authForm.identifier.trim().toLowerCase()
+          localAccount = savedAccounts.find((profile) => profile.username.toLowerCase() === identifier || profile.email.toLowerCase() === identifier)
+          if (!localAccount) throw new Error('No matching local demo profile. Create an account in this browser first.')
+        }
+
+        window.localStorage.removeItem(demoSessionKey)
+        window.sessionStorage.removeItem(demoTabSessionKey)
+        if (authForm.rememberMe) {
+          window.localStorage.setItem(demoSessionKey, localAccount.username.toLowerCase())
+        } else {
+          window.sessionStorage.setItem(demoTabSessionKey, localAccount.username.toLowerCase())
+        }
+        setAccount(localAccount)
+        setAuthError('')
+        return
+      }
+
+      const response = await apiFetch(`/api/auth/${authMode}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(authMode === 'register'
+            ? { username: authForm.username, email: authForm.email, password: authForm.password }
+            : { identifier: authForm.identifier, password: authForm.password }),
+          rememberMe: authForm.rememberMe,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.message || 'Unable to sign in.')
+      setAccount(data.user)
+      setAuthError('')
+    } catch (error) {
+      setAuthError(error.message || 'Unable to sign in. Please try again.')
+    } finally {
+      setAuthSubmitting(false)
+    }
+  }
+
+  const handleSignOut = async () => {
+    try {
+      if (frontendOnlyMode) {
+        window.localStorage.removeItem(demoSessionKey)
+        window.sessionStorage.removeItem(demoTabSessionKey)
+        setAccount(null)
+        setAuthForm({ username: '', identifier: '', email: '', password: '', confirmPassword: '', rememberMe: false })
+        setAuthMode('login')
+        setActiveView('Problems')
+        setAuthError('')
+        return
+      }
+
+      const response = await apiFetch('/api/auth/logout', { method: 'POST' })
+      if (!response.ok) throw new Error('Unable to sign out. Please try again.')
+      setAccount(null)
+      setAuthForm({ username: '', identifier: '', email: '', password: '', confirmPassword: '', rememberMe: false })
+      setAuthMode('login')
+      setActiveView('Problems')
+      setAuthError('')
+    } catch (error) {
+      setAuthError(error.message)
+    }
+  }
+
+  const chooseProblem = (problem) => {
+    setSelectedId(problem.id)
+    setCode(problem.id === 1 ? templates[language] : blankTemplates[language])
+    setOutput(null)
+    setApiError('')
+    setStdin(problem.testInput || '')
+  }
+
+  const changeLanguage = (event) => {
+    const nextLanguage = event.target.value
+    setLanguage(nextLanguage)
+    setCode(selectedProblem.id === 1 ? templates[nextLanguage] : blankTemplates[nextLanguage])
+    setOutput(null)
+  }
+
+  const executeCode = async (mode) => {
+    setRunning(true)
+    setApiError('')
+    setOutput(null)
+    try {
+      if (frontendOnlyMode) {
+        setOutput({
+          status: 'Preview only',
+          message: 'Code was not executed. This frontend-only demo has no code execution service.',
+        })
+        return
+      }
+
+      const response = await apiFetch('/api/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ problemId: selectedProblem.id, language, sourceCode: code, mode, stdin }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.message || 'Code execution failed')
+      setOutput(result)
+      if (mode === 'submit' && result.status === 'Accepted') {
+        setAccount({
+          ...result.user,
+          solvedIds: result.solvedIds,
+          difficultyCounts: result.difficultyCounts,
+          rank: result.rank,
+          dailyProblemId: result.dailyProblemId,
+          dailySolved: result.dailySolved,
+        })
+        setLeaderboard(result.leaderboard)
+      }
+    } catch (error) {
+      setApiError(error.message)
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  if (authLoading) {
+    return <main className="auth-loading" aria-label="Checking your session"><ThinkingOrb state="connecting" size={64} theme="light" aria-label="Checking your session" /><p>Getting your arena readyâ€¦</p></main>
+  }
+
+  if (!account) {
+    const passwordStrength = getPasswordStrength(authForm.password)
+    const strengthLabel = ['Add a password', 'Getting started', 'Fair', 'Good', 'Strong'][passwordStrength]
+    return (
+      <main className={`auth-screen auth-screen-${authMode}`}>
+        <section className="auth-showcase">
+          <div className="showcase-topline">
+            <a className="auth-brand" href="#" onClick={(event) => event.preventDefault()} aria-label="Qodriva home">
+            <img className="brand-mark brand-logo" src="/qodriva-logo.svg" alt="" aria-hidden="true" /><span>Qodriva<small>THE PRACTICE ARENA</small></span>
+            </a>
+            <nav className="showcase-nav" aria-label="Discover Qodriva">
+              <a href="#auth-features">The practice</a>
+              <a href="#auth-panel">Your next step <span>â†—</span></a>
+            </nav>
+          </div>
+          <div className="showcase-content">
+            <span className="showcase-kicker"><span /> A PRACTICE SPACE FOR WHAT'S NEXT</span>
+            <h1>Made to learn.<br /><span>Ready to</span> build.</h1>
+            <p>Every great solution starts with a first attempt. Find your people, pick a challenge, and give your ideas room to grow.</p>
+            <ThinkingOrb className="showcase-orb" state="weaving" size={64} theme="dark" color="#8ce6bb" aria-label="Qodriva animated thinking orb" />
+            <div className="showcase-visual" aria-hidden="true">
+              <div className="visual-orbit orbit-one" /><div className="visual-orbit orbit-two" />
+              <div className="code-window">
+                <div className="window-dots"><i /><i /><i /><span>daily-challenge.js</span><span className="window-language">JavaScript</span></div>
+                <pre><span className="code-purple">function</span> <span className="code-blue">levelUp</span>() {'{\n'}  <span className="code-purple">const</span> practice = <span className="code-green">"every day"</span>{'\n'}  <span className="code-purple">return</span> progress + <span className="code-orange">1</span>{'\n'}{'}'}</pre>
+                <div className="code-success"><span>âœ“</span> All tests passed <b>+50 pts</b></div>
+              </div>
+              <div className="float-badge badge-streak"><span>âœ¦</span><div><strong>7 day streak</strong><small>Keep the momentum</small></div></div>
+              <div className="float-badge badge-rank"><span>â†—</span><div><strong>Top 5%</strong><small>of this weekâ€™s coders</small></div></div>
+            </div>
+            <div className="showcase-invitation">
+              <a className="showcase-cta" href="#auth-panel">{authMode === 'login' ? 'Find your starting point' : 'Start your Qodriva journey'}<span>â†—</span></a>
+              <span className="showcase-invitation-note">A little progress is still progress.</span>
+            </div>
+            <div className="showcase-features" id="auth-features" aria-label="Qodriva features">
+              <span><b>08</b> thoughtful challenges</span><i />
+              <span><b>05</b> ways to create</span><i />
+              <span><b>01</b> next step: yours</span>
+            </div>
+          </div>
+          <div className="showcase-foot"><span>Â© 2026 Qodriva</span><span><span className="foot-live-dot" /> Better, together. One line at a time.</span></div>
+        </section>
+
+        <section className="auth-side">
+          <div className="auth-card" id="auth-panel">
+            <div className="auth-heading">
+              <img className="auth-mobile-mark brand-mark brand-logo" src="/qodriva-logo.svg" alt="" aria-hidden="true" />
+              <span className="auth-kicker"><i /> YOUR NEXT CHAPTER STARTS HERE</span>
+              <h2>{authMode === 'login' ? 'Sign in to Qodriva' : 'Create your account'}</h2>
+              <p>{authMode === 'login' ? 'Your next breakthrough is one good session away.' : 'Set up your profile and make this space yours.'}</p>
+            </div>
+
+            <div className="auth-switch" role="group" aria-label="Account access">
+              <button type="button" aria-pressed={authMode === 'login'} className={authMode === 'login' ? 'selected' : ''} onClick={() => handleAuthModeChange('login')}>Sign in</button>
+              <button type="button" aria-pressed={authMode === 'register'} className={authMode === 'register' ? 'selected' : ''} onClick={() => handleAuthModeChange('register')}>Create account</button>
+              <span className={`auth-switch-indicator ${authMode}`} aria-hidden="true" />
+            </div>
+
+            <form className="auth-form" key={authMode} onSubmit={handleAuthSubmit}>
+              {frontendOnlyMode && <p className="demo-notice"><span className="demo-notice-icon">âœ¦</span><span><strong>Explore the local demo</strong><small>Your profile stays in this browser. No password is saved.</small></span></p>}
+              {authMode === 'register' ? (
+                <>
+                  <label htmlFor="auth-username">Username <span>3â€“24 characters</span></label>
+                  <input id="auth-username" name="username" value={authForm.username} onChange={handleAuthChange} autoComplete="username" placeholder="e.g. jordan_codes" minLength={3} maxLength={24} pattern="[A-Za-z0-9_]{3,24}" title="3â€“24 letters, numbers, or underscores" required />
+                  <label htmlFor="auth-email">Email address</label>
+                  <input id="auth-email" type="email" name="email" value={authForm.email} onChange={handleAuthChange} autoComplete="email" maxLength={254} placeholder="you@example.com" required />
+                </>
+              ) : (
+                <>
+                  <label htmlFor="auth-identifier">{frontendOnlyMode ? 'Profile name or email' : 'Email or username'}</label>
+                  <input id="auth-identifier" name="identifier" value={authForm.identifier} onChange={handleAuthChange} autoComplete="username" placeholder="you@example.com or username" maxLength={254} required />
+                </>
+              )}
+
+              <div className="password-label-row"><label htmlFor="auth-password">Password</label>{authMode === 'login' && <span>{frontendOnlyMode ? 'Demo only' : 'Keep it safe and secret'}</span>}</div>
+              <div className="password-field">
+                <input id="auth-password" type={showPassword ? 'text' : 'password'} name="password" value={authForm.password} onChange={handleAuthChange} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} minLength={authMode === 'register' ? 8 : undefined} maxLength={128} placeholder={authMode === 'login' ? 'Enter your password' : 'At least 8 characters'} required />
+                <button type="button" className="password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? 'Hide' : 'Show'}</button>
+              </div>
+
+              {authMode === 'register' && (
+                <>
+                  <div className="password-strength" aria-label={`Password strength: ${strengthLabel}`}>
+                    <div className="password-strength-track">{[1, 2, 3, 4].map((level) => <i key={level} className={passwordStrength >= level ? `active strength-${passwordStrength}` : ''} />)}</div>
+                    <span>{strengthLabel}</span>
+                  </div>
+                  <label htmlFor="auth-confirm-password">Confirm password</label>
+                  <div className="password-field">
+                    <input id="auth-confirm-password" type={showPassword ? 'text' : 'password'} name="confirmPassword" value={authForm.confirmPassword} onChange={handleAuthChange} autoComplete="new-password" maxLength={128} placeholder="Enter your password again" required />
+                    {authForm.confirmPassword && <span className={`match-indicator ${authForm.password === authForm.confirmPassword ? 'matches' : ''}`}>{authForm.password === authForm.confirmPassword ? 'âœ“ Match' : 'Does not match'}</span>}
+                  </div>
+                  <p className="password-hint">Use 8â€“128 characters. A longer, unique passphrase is safer.</p>
+                </>
+              )}
+
+              <label className="remember-option"><input type="checkbox" name="rememberMe" checked={authForm.rememberMe} onChange={handleAuthChange} /><span className="custom-check" />{frontendOnlyMode ? 'Remember this profile after closing the browser' : 'Keep me signed in for 7 days'}</label>
+              {authError && <p className="auth-message auth-error" role="alert">{authError}</p>}
+              <MetalFx className="auth-submit-metal" style={{ width: '100%' }} preset="chromatic" variant="button" theme="light" strength={0.72} glowGain={0.65} innerShadow normalizeHostStyles={false}>
+                <button type="submit" className="auth-submit" disabled={authSubmitting}>{authSubmitting ? <><ThinkingOrb state={authMode === 'login' ? 'connecting' : 'composing'} size={20} theme="dark" color="#e5fff3" aria-label={authMode === 'login' ? 'Signing in' : 'Creating account'} />{authMode === 'login' ? 'Signing inâ€¦' : 'Creating accountâ€¦'}</> : <>{authMode === 'login' ? 'Sign in' : 'Create account'} <span>â†’</span></>}</button>
+              </MetalFx>
+              {frontendOnlyMode && <><div className="auth-divider"><span>OR JUMP RIGHT IN</span></div><button type="button" className="guest-button" onClick={handleGuestDemo}><span>â†—</span> Explore as a guest</button></>}
+            </form>
+
+            <p className="auth-terms">{frontendOnlyMode ? 'Demo profiles are saved only on this device. No real account or code execution required.' : 'By continuing, you agree to use Qodriva respectfully and keep your account credentials private.'}</p>
+            <div className="auth-bottom"><span><span className="auth-trust-icon">âœ“</span> {frontendOnlyMode ? 'Private to this browser' : 'Your data stays protected'}</span><span>{frontendOnlyMode ? 'Local demo' : 'Secure sign-in'}</span></div>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
+  return (
+    <div className="arena">
+      <aside className="sidebar">
+        <a className="brand" href="#" onClick={(event) => { event.preventDefault(); setActiveView('Problems') }}>
+          <img className="brand-mark brand-logo" src="/qodriva-logo.svg" alt="" aria-hidden="true" />
+          <span>Qodriva<small>LEVEL UP YOUR LOGIC</small></span>
+        </a>
+        <div className="nav-label">WORKSPACE</div>
+        <nav className="side-nav" aria-label="Main navigation">
+          {[
+            ['Problems', 'grid'],
+            ['Leaderboard', 'trophy'],
+            ['Profile', 'user'],
+          ].map(([label, icon]) => (
+            <button key={label} className={`nav-item ${activeView === label ? 'active' : ''}`} onClick={() => setActiveView(label)}>
+              <Icon name={icon} />{label}{label === 'Problems' && <span className="nav-count">128</span>}
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="streak-card"><span className="streak-icon">âœ¦</span><div><strong>{account.streak || 0} day streak</strong><small>{account.streak ? 'Youâ€™re on fire. Keep it up!' : 'Solve a problem today to start a streak.'}</small></div></div>
+          <button className="profile-mini" onClick={() => setActiveView('Profile')}>
+            <span className="avatar">{initials}</span><span><strong>{username}</strong><small>Qodriva member</small></span><Icon name="chevron" />
+          </button>
+        </div>
+      </aside>
+
+      <main className="main-area">
+        {frontendOnlyMode && <div className="demo-banner" role="status">Frontend-only demo Â· profile data stays in this browser Â· code execution is disabled.</div>}
+        <header className="topbar">
+          <div className="breadcrumbs"><span>Workspace</span><b>/</b><strong>{activeView}</strong></div>
+          <div className="top-actions">
+            <span className="date-label"><Icon name="clock" /> {frontendOnlyMode ? 'Local demo' : 'Global rankings Â· live'}</span>
+            <button className="icon-button" aria-label="Notifications"><Icon name="bell" /><i /></button>
+            <button type="button" className="sign-out-button" onClick={handleSignOut}>Sign out</button><span className="avatar avatar-small">{initials}</span>
+          </div>
+        </header>
+
+        {activeView === 'Problems' && (
+          <>
+            <section className="welcome-row">
+              <div><p className="eyebrow">YOUR QODRIVA</p><h1>Welcome back, {username} <span>âœ¦</span></h1><p className="subheading">Ready to sharpen your skills? Your next challenge is waiting.</p></div>
+              <button className="daily-button" onClick={() => dailyProblem && chooseProblem(dailyProblem)} disabled={!dailyProblem}><span>âœ¦</span><div><small>DAILY CHALLENGE</small><strong>{dailyProblem?.title || 'Loading challenge'} <b>{account.dailySolved ? 'Completed' : '+Practice'}</b></strong></div><span className="daily-arrow">â†—</span></button>
+            </section>
+
+            <section className="stats-grid" aria-label="Your coding statistics">
+              <article className="stat-card"><div className="stat-heading">PROBLEMS SOLVED <span className="stat-icon blue"><Icon name="check" /></span></div><div className="stat-value">{account.solvedCount}<span> total</span></div><div className="stat-progress"><i style={{ width: `${Math.min(account.solvedCount, 100)}%` }} /></div><small>Keep practicing to build your streak</small></article>
+              <article className="stat-card"><div className="stat-heading">TOTAL POINTS <span className="stat-icon purple">âœ¦</span></div><div className="stat-value">{Number(account.points).toLocaleString()}</div><small>Your points from accepted solutions</small></article>
+              <article className="stat-card"><div className="stat-heading">GLOBAL RANK <span className="stat-icon orange"><Icon name="trophy" /></span></div><div className="stat-value">{account.rank ? `#${account.rank}` : 'â€”'}</div><small>{account.rank ? 'Among registered Qodriva members' : 'Solve problems to join the rankings'}</small></article>
+              <article className="stat-card"><div className="stat-heading">CURRENT STREAK <span className="stat-icon red"><Icon name="flame" /></span></div><div className="stat-value">{account.streak} <span>days</span></div><small>Your current daily practice streak</small></article>
+            </section>
+
+            <section className="progress-panel">
+              <div className="progress-title"><div><h2>Your progress</h2><p>Accepted solutions count toward your difficulty breakdown.</p></div><button onClick={() => setActiveView('Profile')}>View analytics <span>â†—</span></button></div>
+              <div className="difficulty-progress">{['Easy', 'Medium', 'Hard'].map((level) => {
+                const count = account.difficultyCounts?.[level] || 0
+                const total = problems.filter((problem) => problem.difficulty === level).length
+                return <div className="difficulty-progress-row" key={level}><span className={`difficulty ${level.toLowerCase()}`}>{level}</span><div className="stat-progress"><i style={{ width: `${total ? count / total * 100 : 0}%` }} /></div><strong>{count}/{total}</strong></div>
+              })}</div>
+            </section>
+
+            <section className="problems-section">
+              <div className="section-heading"><div><h2>Problem set</h2><p>Find your next opportunity to grow.</p></div><button className="text-button" onClick={() => { setDifficulty('All difficulties'); setTopic('All topics'); setQuery('') }}>Browse all problems <span>â†’</span></button></div>
+              {catalogError && <p className="api-notice">Showing the built-in sample catalog because the problems API could not be reached.</p>}
+              <div className="filters">
+                <label className="search-field"><Icon name="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search problems..." /></label>
+                <select aria-label="Filter by difficulty" value={difficulty} onChange={(event) => setDifficulty(event.target.value)}><option>All difficulties</option><option>Easy</option><option>Medium</option><option>Hard</option></select>
+                <select aria-label="Filter by topic" value={topic} onChange={(event) => setTopic(event.target.value)}>{topics.map((item) => <option key={item}>{item}</option>)}</select>
+                <button className="filter-button" onClick={() => { setDifficulty('All difficulties'); setTopic('All topics') }}><Icon name="bars" /> Filters</button>
+              </div>
+              <div className="problem-table">
+                <div className="table-header"><span>STATUS</span><span>TITLE</span><span>DIFFICULTY</span><span>ACCEPTANCE</span><span>TOPICS</span><span /></div>
+                {filteredProblems.map((problem) => <button className={`problem-row ${selectedId === problem.id ? 'selected' : ''}`} key={problem.id} onClick={() => chooseProblem(problem)}>
+                  <span className={`solved-indicator ${account.solvedIds?.includes(problem.id) ? 'done' : ''}`}>{account.solvedIds?.includes(problem.id) ? 'âœ“' : ''}</span><span className="problem-title">{problem.title}</span><span className={`difficulty ${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span><span className="acceptance">{problem.acceptance}</span><span className="topic-chips">{(problem.topics || []).slice(0, 2).map((item) => <i key={item}>{item}</i>)}</span><span className="row-arrow">â€º</span>
+                </button>)}
+                {filteredProblems.length === 0 && <div className="no-results">No problems match these filters.</div>}
+              </div>
+            </section>
+
+            <section className="practice-panel">
+              <div className="practice-intro">
+                <div className="practice-meta"><span className={`difficulty ${selectedProblem.difficulty.toLowerCase()}`}>{selectedProblem.difficulty}</span><span>#{String(selectedProblem.id).padStart(3, '0')}</span><span>{selectedProblem.acceptance} acceptance</span></div>
+                <h2>{selectedProblem.title}</h2>
+                <div className="problem-description"><p>{selectedProblem.description}</p><h3>Examples</h3>{selectedProblem.examples?.map((example, index) => <div className="example" key={example.input}><strong>Example {index + 1}</strong><code>Input: {example.input}<br />Output: {example.output}</code></div>)}<h3>Constraints</h3><ul>{selectedProblem.constraints?.map((constraint) => <li key={constraint}>{constraint}</li>)}</ul></div>
+              </div>
+              <div className="editor-panel">
+                <div className="editor-toolbar"><div><span className="live-dot" /> CODE EDITOR</div><select aria-label="Programming language" value={language} onChange={changeLanguage}>{languages.map((item) => <option key={item}>{item}</option>)}</select></div>
+                <div className="editor-wrap"><div className="line-numbers" aria-hidden="true">{code.split('\n').slice(0, 18).map((_, index) => <span key={index}>{index + 1}</span>)}</div><textarea aria-label="Code editor" spellCheck="false" value={code} onChange={(event) => setCode(event.target.value)} /></div>
+                <div className="test-inputs"><label>Standard input<textarea aria-label="Standard input" value={stdin} onChange={(event) => setStdin(event.target.value)} placeholder="Input passed to your program" /></label></div>
+                <div className="editor-footer"><span>âŒ˜ Enter to run</span><div><button className="run-button" disabled={running} onClick={() => executeCode('run')}><Icon name="play" /> {running ? 'Runningâ€¦' : 'Run code'}</button><button className="submit-button" disabled={running} onClick={() => executeCode('submit')}><Icon name="send" /> Submit</button></div></div>
+                {(apiError || output) && <div className={`execution-result ${apiError ? 'execution-error' : output.status === 'Accepted' ? 'execution-success' : ''}`} role="status">{apiError ? <><strong>Execution unavailable</strong><span>{apiError}</span></> : <><strong>{output.status}</strong><span>{output.message || `${output.passed || 0}/${output.total || 0} test cases passed`}</span>{output.results?.map((test, index) => <small key={index}>Case {index + 1}: {test.status}</small>)}</>}</div>}
+                <p className="judge-note">{frontendOnlyMode ? 'Preview only: this frontend demo does not execute code or save submissions.' : 'Run uses your standard input. Submit is checked against server-managed test cases. Configure Judge0 on the server.'}</p>
+              </div>
+            </section>
+          </>
+        )}
+
+        {activeView === 'Leaderboard' && <section className="alternate-page"><p className="eyebrow">COMMUNITY</p><h1>Leaderboard <span>ðŸ†</span></h1><p className="subheading">Global rankings based on accepted problem solutions.</p><div className="leaderboard-card"><div className="leader-row leader-head"><span>RANK</span><span>CODER</span><span>SOLVED</span><span>POINTS</span></div>{displayedLeaderboard.map(({ rank, username: coder, solved, points }) => <div className={`leader-row ${coder.toLowerCase() === username.toLowerCase() ? 'you' : ''}`} key={rank}><span className="rank-cell">{rank === 1 ? 'ðŸ¥‡' : rank === 2 ? 'ðŸ¥ˆ' : rank === 3 ? 'ðŸ¥‰' : `#${String(rank).padStart(2, '0')}`}</span><span><span className="avatar avatar-tiny">{coder.slice(0, 2).toUpperCase()}</span>{coder}{coder.toLowerCase() === username.toLowerCase() && <i>You</i>}</span><span>{solved}</span><strong>{Number(points).toLocaleString()}</strong></div>)}{displayedLeaderboard.length === 0 && <div className="no-results">No ranked accounts yet. Solve a problem to appear here.</div>}</div></section>}
+
+        {activeView === 'Profile' && <section className="alternate-page"><p className="eyebrow">YOUR JOURNEY</p><h1>Profile & analytics</h1><p className="subheading">A snapshot of your accepted solutions and practice streak.</p><div className="profile-overview"><span className="avatar avatar-large">{initials}</span><div><h2>{account.username}</h2><p>{account.email} Â· {account.rank ? `Global rank #${account.rank}` : 'Not ranked yet'}</p><span className="profile-tag">âœ¦ Qodriva member</span></div></div><div className="profile-stats"><article className="stat-card"><div className="stat-heading">PROBLEMS SOLVED</div><div className="stat-value">{account.solvedCount}</div><small>Unique problems with accepted solutions</small></article><article className="stat-card"><div className="stat-heading">TOTAL POINTS</div><div className="stat-value">{Number(account.points).toLocaleString()}</div><small>10 Easy Â· 25 Medium Â· 50 Hard</small></article><article className="stat-card"><div className="stat-heading">CURRENT STREAK</div><div className="stat-value">{account.streak} <span>days</span></div><small>Consecutive days with accepted solutions</small></article></div><div className="progress-panel"><div className="progress-title"><div><h2>Difficulty breakdown</h2><p>Unique accepted problems by difficulty.</p></div></div><div className="difficulty-progress">{['Easy', 'Medium', 'Hard'].map((level) => <div className="difficulty-progress-row" key={level}><span className={`difficulty ${level.toLowerCase()}`}>{level}</span><div className="stat-progress"><i style={{ width: `${problems.filter((problem) => problem.difficulty === level).length ? (account.difficultyCounts?.[level] || 0) / problems.filter((problem) => problem.difficulty === level).length * 100 : 0}%` }} /></div><strong>{account.difficultyCounts?.[level] || 0}/{problems.filter((problem) => problem.difficulty === level).length}</strong></div>)}</div></div></section>}
+      </main>
+    </div>
+  )
+}
+
+export default App
+
+
+
+========== .\src\App.css ==========
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  font-family: 'DM Sans', sans-serif;
+  color: #19211f;
+  background: #f5f7f6;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.arena {
+  --green: #14a67a;
+  --ink: #19211f;
+  --muted: #77817d;
+  --line: #e9edeb;
+  display: flex;
+  min-height: 100vh;
+  background: #f5f7f6;
+}
+
+.auth-screen {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: minmax(0, 1.13fr) minmax(440px, 0.87fr);
+  color: #202a26;
+  background: #fff;
+  font-family: 'Manrope', 'DM Sans', sans-serif;
+}
+
+.auth-showcase {
+  position: relative;
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 36px clamp(36px, 6vw, 96px) 25px;
+  color: #e9f4ef;
+  background:
+    radial-gradient(ellipse at 20% 82%, rgba(37, 132, 97, 0.28), transparent 42%),
+    radial-gradient(ellipse at 85% 15%, rgba(68, 111, 91, 0.2), transparent 39%),
+    #101a17;
+}
+
+.auth-showcase::before,
+.auth-showcase::after {
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border: 1px solid rgba(188, 236, 209, 0.07);
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+}
+
+.auth-showcase::before {
+  right: -260px;
+  bottom: -210px;
+}
+
+.auth-showcase::after {
+  right: -205px;
+  bottom: -155px;
+}
+
+.auth-brand {
+  z-index: 1;
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 11px;
+  color: #f2faf6;
+  font: 700 21px/1 'Space Grotesk', sans-serif;
+  letter-spacing: -1px;
+  text-decoration: none;
+}
+
+.auth-brand .brand-mark {
+  width: 39px;
+  height: 39px;
+}
+
+.auth-brand .brand-accent {
+  color: #48c995;
+}
+
+.showcase-content {
+  position: relative;
+  z-index: 1;
+  width: min(610px, 100%);
+  margin: auto 0;
+  padding-top: 42px;
+}
+
+.showcase-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #a0b3aa;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.7px;
+}
+
+.showcase-kicker > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #42cc91;
+  box-shadow: 0 0 15px rgba(66, 204, 145, 0.8);
+}
+
+.showcase-content h1 {
+  margin: 22px 0 14px;
+  color: #f3f7f5;
+  font: 600 clamp(38px, 5vw, 64px)/1.08 'Space Grotesk', sans-serif;
+  letter-spacing: -3.3px;
+}
+
+.showcase-content h1 > span {
+  color: #64d5a3;
+}
+
+.showcase-content > p {
+  max-width: 410px;
+  margin: 0;
+  color: #9eafa7;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.showcase-orb {
+  position: absolute;
+  top: 16px;
+  right: 28px;
+  opacity: 0.95;
+  filter: drop-shadow(0 0 28px rgba(91, 217, 160, 0.17));
+}
+
+.showcase-visual {
+  position: relative;
+  display: grid;
+  height: 285px;
+  place-items: center;
+  margin-top: 26px;
+}
+
+.visual-orbit {
+  position: absolute;
+  width: 440px;
+  height: 190px;
+  border: 1px solid rgba(126, 205, 164, 0.12);
+  border-radius: 50%;
+  transform: rotate(-16deg);
+}
+
+.orbit-two {
+  width: 490px;
+  height: 250px;
+  transform: rotate(22deg);
+}
+
+.code-window {
+  z-index: 1;
+  width: min(410px, 88%);
+  padding: 14px 17px 12px;
+  border: 1px solid rgba(191, 226, 207, 0.14);
+  border-radius: 12px;
+  background: rgba(22, 35, 30, 0.88);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+  transform: rotate(-2deg);
+}
+
+.window-dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(199, 230, 213, 0.1);
+}
+
+.window-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #647c70;
+}
+
+.window-dots i:first-child {
+  background: #df8175;
+}
+
+.window-dots i:nth-child(2) {
+  background: #e8bd68;
+}
+
+.window-dots i:nth-child(3) {
+  background: #72bd8e;
+}
+
+.window-dots > span {
+  margin-left: 7px;
+  color: #8a9e93;
+  font-size: 8px;
+}
+
+.code-window pre {
+  margin: 11px 0 12px;
+  color: #c4d4ca;
+  font: 10px/1.8 Consolas, monospace;
+}
+
+.code-purple {
+  color: #c49af4;
+}
+
+.code-blue {
+  color: #83c6ed;
+}
+
+.code-green {
+  color: #9cd69c;
+}
+
+.code-orange {
+  color: #ecb77c;
+}
+
+.code-success {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(199, 230, 213, 0.1);
+  color: #b3c5ba;
+  font-size: 8px;
+}
+
+.code-success > span {
+  color: #69d7a1;
+}
+
+.code-success b {
+  margin-left: auto;
+  color: #76dba7;
+  font-size: 8px;
+}
+
+.float-badge {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid rgba(205, 239, 220, 0.13);
+  border-radius: 10px;
+  background: rgba(28, 44, 37, 0.95);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+}
+
+.badge-streak {
+  top: 41px;
+  right: 3%;
+}
+
+.badge-rank {
+  bottom: 26px;
+  left: 4%;
+}
+
+.float-badge > span {
+  color: #7ce0ad;
+  font-size: 15px;
+}
+
+.float-badge strong,
+.float-badge small {
+  display: block;
+}
+
+.float-badge strong {
+  color: #e3eee8;
+  font-size: 8px;
+}
+
+.float-badge small {
+  margin-top: 2px;
+  color: #91a49a;
+  font-size: 7px;
+}
+
+.showcase-foot {
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  color: #788a80;
+  font-size: 8px;
+}
+
+.auth-side {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 38px 34px;
+  background:
+    radial-gradient(ellipse at 95% 4%, rgba(230, 247, 239, 0.78), transparent 34%),
+    #fff;
+}
+
+.auth-card {
+  width: min(100%, 395px);
+}
+
+.auth-mobile-mark {
+  display: none;
+}
+
+.auth-heading {
+  margin-bottom: 26px;
+}
+
+.auth-eyebrow {
+  margin: 0 0 9px;
+  color: #2a9b70;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.55px;
+}
+
+.auth-heading h2 {
+  margin: 0;
+  color: #1d2823;
+  font: 700 25px/1.25 'Space Grotesk', sans-serif;
+  letter-spacing: -0.7px;
+}
+
+.auth-heading > p:last-child {
+  margin: 8px 0 0;
+  color: #86928b;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.auth-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 22px;
+  padding: 4px;
+  border: 1px solid #edf1ee;
+  border-radius: 9px;
+  background: #f7f9f8;
+}
+
+.auth-switch button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 6px;
+  color: #86918b;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 700;
+  transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.auth-switch button.selected {
+  color: #28342e;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(23, 43, 33, 0.09);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.demo-notice,
+.demo-banner {
+  border: 1px solid #d9eee5;
+  border-radius: 8px;
+  color: #38745f;
+  background: #f1faf6;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.demo-notice {
+  margin: 0 0 16px;
+  padding: 9px 10px;
+}
+
+.auth-form > label,
+.password-label-row > label {
+  margin-bottom: 7px;
+  color: #35413a;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.auth-form > input,
+.password-field > input {
+  width: 100%;
+  height: 42px;
+  margin-bottom: 15px;
+  padding: 0 12px;
+  border: 1px solid #e0e7e2;
+  border-radius: 7px;
+  outline: none;
+  color: #2f3a34;
+  background: #fff;
+  font-size: 10px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.auth-form > input::placeholder,
+.password-field > input::placeholder {
+  color: #a8b1ac;
+}
+
+.auth-form > input:focus,
+.password-field > input:focus {
+  border-color: #58b58b;
+  box-shadow: 0 0 0 3px rgba(43, 168, 116, 0.1);
+}
+
+.password-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.password-label-row > span {
+  margin-bottom: 7px;
+  color: #9aa49e;
+  font-size: 8px;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field > input {
+  padding-right: 61px;
+}
+
+.password-toggle,
+.match-indicator {
+  position: absolute;
+  top: 12px;
+  right: 11px;
+  border: 0;
+  color: #38956f;
+  background: transparent;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.match-indicator {
+  color: #c56359;
+  font-size: 8px;
+}
+
+.match-indicator.matches {
+  color: #22976b;
+}
+
+.password-hint {
+  margin: -8px 0 14px;
+  color: #929d96;
+  font-size: 8px;
+}
+
+.remember-option {
+  position: relative;
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 17px;
+  color: #758079;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.remember-option > input {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  opacity: 0;
+}
+
+.custom-check {
+  display: grid;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+  border: 1px solid #d9e2dc;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.custom-check::after {
+  color: #fff;
+  content: 'âœ“';
+  font-size: 10px;
+  opacity: 0;
+}
+
+.remember-option > input:checked + .custom-check {
+  border-color: #209a6f;
+  background: #209a6f;
+}
+
+.remember-option > input:checked + .custom-check::after {
+  opacity: 1;
+}
+
+.remember-option > input:focus-visible + .custom-check {
+  outline: 2px solid #58a98a;
+  outline-offset: 2px;
+}
+
+.auth-message {
+  margin: -4px 0 13px;
+  padding: 9px 10px;
+  border: 1px solid;
+  border-radius: 7px;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.auth-error {
+  border-color: #f1d4d0;
+  color: #a9443c;
+  background: #fff7f6;
+}
+
+.auth-submit {
+  display: flex;
+  width: 100%;
+  min-height: 43px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 7px;
+  color: #fff;
+  background: linear-gradient(105deg, #16865e, #24a875);
+  box-shadow: 0 5px 12px rgba(27, 145, 99, 0.17);
+  font-size: 10px;
+  font-weight: 800;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.auth-submit-metal {
+  display: flex !important;
+  width: 100%;
+}
+
+.auth-submit-metal > .metal-fx-content {
+  width: 100%;
+}
+
+.auth-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 15px rgba(27, 145, 99, 0.23);
+}
+
+.auth-submit:disabled {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.auth-submit > span:last-child {
+  font-size: 14px;
+}
+
+.auth-terms {
+  margin: 15px 0 0;
+  color: #9ba59f;
+  font-size: 8px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.auth-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 27px;
+  padding-top: 13px;
+  border-top: 1px solid #edf1ee;
+  color: #9aa49e;
+  font-size: 8px;
+}
+
+.auth-bottom > span:first-child {
+  color: #557b67;
+}
+
+.auth-loading {
+  display: grid;
+  min-height: 100vh;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  color: #738179;
+  background: #f7faf8;
+  font-size: 11px;
+}
+
+.auth-loading p {
+  margin: 0;
+}
+
+.sign-out-button {
+  padding: 6px 9px;
+  border: 1px solid #e0e8e3;
+  border-radius: 7px;
+  color: #526159;
+  background: #fff;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  width: 246px;
+  padding: 29px 17px 16px;
+  background: #fff;
+  border-right: 1px solid #e9edeb;
+}
+
+.brand {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  padding: 0 7px 36px;
+  color: #1a2521;
+  font: 700 21px/1 'Space Grotesk', sans-serif;
+  text-decoration: none;
+  letter-spacing: -1px;
+}
+
+.brand-mark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 12px;
+  color: #fff;
+  background: #12a77a;
+  font: 700 13px 'Space Grotesk', sans-serif;
+  letter-spacing: -1px;
+}
+
+.brand-logo {
+  object-fit: cover;
+}
+
+.brand-accent {
+  color: #13a77a;
+}
+
+.brand small {
+  display: block;
+  margin-top: 6px;
+  color: #a2aaa7;
+  font: 700 8px 'DM Sans', sans-serif;
+  letter-spacing: 1.15px;
+}
+
+.nav-label {
+  padding: 0 12px 12px;
+  color: #a0a9a5;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.25px;
+}
+
+.side-nav {
+  display: grid;
+  gap: 5px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #737e79;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.nav-item.active {
+  color: #12835f;
+  background: #e9f7f2;
+}
+
+.nav-item .icon {
+  width: 17px;
+  color: inherit;
+  font-size: 16px;
+  text-align: center;
+}
+
+.nav-count {
+  margin-left: auto;
+  color: #a4aeaa;
+  font-size: 11px;
+}
+
+.sidebar-bottom {
+  display: grid;
+  gap: 13px;
+  margin-top: auto;
+}
+
+.streak-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid #f2e8d8;
+  border-radius: 12px;
+  background: #fffaf1;
+}
+
+.streak-icon {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border-radius: 9px;
+  color: #ed9a32;
+  background: #fff0d5;
+}
+
+.streak-card strong,
+.profile-mini strong {
+  display: block;
+  color: #303936;
+  font-size: 11px;
+}
+
+.streak-card small,
+.profile-mini small {
+  display: block;
+  margin-top: 3px;
+  color: #929c97;
+  font-size: 9px;
+}
+
+.profile-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 4px 2px;
+  border: 0;
+  border-top: 1px solid #edf0ee;
+  background: transparent;
+  text-align: left;
+}
+
+.profile-mini > .icon {
+  margin-left: auto;
+  color: #87918c;
+}
+
+.avatar {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(140deg, #60a994, #327763);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.main-area {
+  width: calc(100% - 246px);
+  max-width: 1530px;
+  margin-left: 246px;
+  padding: 0 36px 55px;
+}
+
+.demo-banner {
+  margin-top: 12px;
+  padding: 8px 11px;
+}
+
+.topbar {
+  display: flex;
+  min-height: 67px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e8ecea;
+}
+
+.breadcrumbs,
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.breadcrumbs {
+  color: #9aa39f;
+  font-size: 11px;
+}
+
+.breadcrumbs b {
+  color: #c3cac7;
+  font-weight: 400;
+}
+
+.breadcrumbs strong {
+  color: #38423e;
+  font-weight: 600;
+}
+
+.top-actions {
+  gap: 18px;
+}
+
+.date-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #8d9792;
+  font-size: 10px;
+}
+
+.date-label strong {
+  color: #515d57;
+  font-weight: 600;
+}
+
+.icon-clock {
+  font-size: 15px;
+}
+
+.icon-button {
+  position: relative;
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border: 1px solid #e8ecea;
+  border-radius: 9px;
+  color: #66716c;
+  background: #fff;
+}
+
+.icon-button i {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 5px;
+  height: 5px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: #ed785f;
+}
+
+.avatar-small {
+  width: 29px;
+  height: 29px;
+  font-size: 9px;
+}
+
+.welcome-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 27px 0 21px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #96a09b;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1,
+h2 {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.welcome-row h1,
+.alternate-page h1 {
+  margin: 0;
+  color: #202a26;
+  font-size: clamp(23px, 2.2vw, 29px);
+  letter-spacing: -1px;
+}
+
+.welcome-row h1 span,
+.alternate-page h1 span {
+  font-size: 19px;
+}
+
+.subheading {
+  margin: 7px 0 0;
+  color: #8a9590;
+  font-size: 11px;
+}
+
+.daily-button {
+  display: flex;
+  min-width: 250px;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 13px;
+  border: 1px solid #d9eee6;
+  border-radius: 12px;
+  background: #eff9f5;
+  color: #178562;
+  text-align: left;
+}
+
+.daily-button > span:first-child {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border-radius: 9px;
+  color: #fff;
+  background: #1ba87e;
+}
+
+.daily-button small,
+.daily-button strong {
+  display: block;
+}
+
+.daily-button small {
+  margin-bottom: 3px;
+  color: #84978f;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.daily-button strong {
+  color: #33423c;
+  font-size: 11px;
+}
+
+.daily-button strong b {
+  margin-left: 8px;
+  color: #15966c;
+  font-size: 9px;
+}
+
+.daily-arrow {
+  margin-left: auto;
+  font-size: 17px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 13px;
+}
+
+.stat-card {
+  min-height: 113px;
+  padding: 14px 15px 12px;
+  border: 1px solid #e9eeeb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.stat-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #89938e;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.65px;
+}
+
+.stat-icon {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.stat-icon.blue {
+  color: #5188df;
+  background: #edf4ff;
+}
+
+.stat-icon.purple {
+  color: #9574dc;
+  background: #f4efff;
+}
+
+.stat-icon.orange {
+  color: #e8a048;
+  background: #fff6e9;
+}
+
+.stat-icon.red {
+  color: #e66c61;
+  background: #fff0ed;
+}
+
+.stat-value {
+  margin: 3px 0 2px;
+  color: #26322d;
+  font: 600 26px/1.1 'Space Grotesk', sans-serif;
+  letter-spacing: -1px;
+}
+
+.stat-value > span {
+  color: #9aa39f;
+  font: 500 11px 'DM Sans', sans-serif;
+  letter-spacing: 0;
+}
+
+.stat-card > small {
+  color: #959f9a;
+  font-size: 9px;
+}
+
+.stat-card > small b {
+  color: #68756e;
+  font-weight: 600;
+}
+
+.stat-card > small.positive {
+  color: #1a9c72;
+  font-weight: 700;
+}
+
+.stat-card > small.positive span {
+  color: #99a29e;
+  font-weight: 400;
+}
+
+.stat-progress,
+.progress-track {
+  overflow: hidden;
+  height: 4px;
+  border-radius: 10px;
+  background: #edf1ef;
+}
+
+.stat-progress {
+  margin: 9px 0 5px;
+}
+
+.stat-progress i,
+.progress-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #4a9b7d;
+}
+
+.progress-panel {
+  margin-top: 15px;
+  padding: 17px 19px 15px;
+  border: 1px solid #e9eeeb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.progress-title,
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.progress-title h2,
+.section-heading h2,
+.list-panel h2 {
+  margin: 0;
+  color: #2a342f;
+  font-size: 14px;
+  letter-spacing: -0.3px;
+}
+
+.progress-title p,
+.section-heading p {
+  margin: 4px 0 0;
+  color: #97a19c;
+  font-size: 9px;
+}
+
+.progress-title button,
+.text-button {
+  border: 0;
+  background: transparent;
+  color: #36896e;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.progress-title button span,
+.text-button span {
+  margin-left: 4px;
+}
+
+.difficulty-progress {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 17px;
+}
+
+.difficulty-progress-row {
+  display: grid;
+  grid-template-columns: auto minmax(36px, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  color: #65716a;
+  font-size: 9px;
+}
+
+.difficulty-progress-row .stat-progress {
+  margin: 0;
+}
+
+.difficulty-progress-row > strong {
+  color: #59665f;
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.difficulty-item > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 7px;
+  color: #4d5853;
+  font-size: 9px;
+}
+
+.difficulty-item > div:first-child span {
+  color: #8e9893;
+}
+
+.progress-track {
+  height: 5px;
+}
+
+.progress-track .easy {
+  background: #26a676;
+}
+
+.progress-track .medium {
+  background: #dfa842;
+}
+
+.progress-track .hard {
+  background: #e37368;
+}
+
+.problems-section {
+  margin-top: 24px;
+}
+
+.api-notice {
+  margin: -3px 0 10px;
+  color: #8a6c34;
+  font-size: 9px;
+}
+
+.section-heading {
+  margin-bottom: 13px;
+}
+
+.filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.filters select,
+.filter-button,
+.search-field {
+  height: 32px;
+  border: 1px solid #e4e9e6;
+  border-radius: 8px;
+  background: #fff;
+  color: #5d6863;
+  font-size: 9px;
+}
+
+.filters select {
+  min-width: 125px;
+  padding: 0 27px 0 10px;
+}
+
+.search-field {
+  display: flex;
+  min-width: 180px;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+}
+
+.search-field .icon {
+  color: #9ba5a0;
+  font-size: 16px;
+}
+
+.search-field input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: #3e4944;
+  background: transparent;
+  font-size: 9px;
+}
+
+.search-field input::placeholder {
+  color: #a4ada9;
+}
+
+.filter-button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+}
+
+.problem-table {
+  overflow: hidden;
+  border: 1px solid #e8edeb;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.table-header,
+.problem-row {
+  display: grid;
+  grid-template-columns: 46px minmax(180px, 2.2fr) minmax(75px, 0.75fr) minmax(90px, 0.8fr) minmax(155px, 1.55fr) 18px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+}
+
+.table-header {
+  min-height: 32px;
+  border-bottom: 1px solid #edf0ef;
+  color: #a0a9a5;
+  background: #fbfcfb;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.75px;
+}
+
+.problem-row {
+  width: 100%;
+  min-height: 40px;
+  border: 0;
+  border-bottom: 1px solid #f0f2f1;
+  background: #fff;
+  color: #65706a;
+  text-align: left;
+  font-size: 9px;
+  transition: background 0.15s ease;
+}
+
+.problem-row:last-child {
+  border-bottom: 0;
+}
+
+.problem-row:hover,
+.problem-row.selected {
+  background: #f5faf7;
+}
+
+.solved-indicator {
+  display: grid;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+  border: 1px solid #dfe5e2;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 9px;
+}
+
+.solved-indicator.done {
+  border-color: #23a779;
+  background: #23a779;
+}
+
+.problem-title {
+  overflow: hidden;
+  color: #39443f;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.difficulty {
+  display: inline-block;
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 5px;
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.difficulty.easy {
+  color: #1b916a;
+  background: #e9f8f1;
+}
+
+.difficulty.medium {
+  color: #bf8522;
+  background: #fff6e4;
+}
+
+.difficulty.hard {
+  color: #cc655b;
+  background: #fff0ee;
+}
+
+.acceptance {
+  color: #818c86;
+}
+
+.topic-chips {
+  display: flex;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.topic-chips i {
+  overflow: hidden;
+  padding: 4px 6px;
+  border-radius: 4px;
+  color: #84908a;
+  background: #f2f5f3;
+  font-size: 7px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-arrow {
+  color: #a9b1ad;
+  font-size: 17px;
+}
+
+.no-results {
+  padding: 25px;
+  color: #8d9792;
+  text-align: center;
+  font-size: 11px;
+}
+
+.practice-panel {
+  display: grid;
+  grid-template-columns: minmax(250px, 0.85fr) minmax(0, 1.15fr);
+  overflow: hidden;
+  margin-top: 20px;
+  border: 1px solid #e7ece9;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.practice-intro {
+  padding: 18px 20px;
+  border-right: 1px solid #ebefed;
+}
+
+.practice-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #929c97;
+  font-size: 8px;
+}
+
+.practice-intro h2 {
+  margin: 11px 0 10px;
+  color: #303a35;
+  font-size: 18px;
+  letter-spacing: -0.5px;
+}
+
+.problem-description {
+  color: #64706a;
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.problem-description > p {
+  margin-bottom: 12px;
+}
+
+.problem-description h3 {
+  margin: 10px 0 5px;
+  color: #46514b;
+  font-size: 10px;
+}
+
+.example {
+  margin: 6px 0;
+}
+
+.example strong {
+  display: block;
+  margin-bottom: 3px;
+  color: #6c7772;
+  font-size: 8px;
+}
+
+.example code {
+  display: block;
+  padding: 7px 8px;
+  border: 1px solid #edf0ef;
+  border-radius: 6px;
+  color: #69746e;
+  background: #f8faf9;
+  font: 9px/1.6 Consolas, monospace;
+}
+
+.problem-description ul {
+  margin: 0;
+  padding-left: 14px;
+  color: #7b8680;
+  font-size: 9px;
+}
+
+.editor-panel {
+  min-width: 0;
+  padding: 13px;
+  background: #fbfcfb;
+}
+
+.editor-toolbar,
+.editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.editor-toolbar {
+  padding: 0 1px 10px;
+  color: #77827c;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+
+.live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: #35af83;
+}
+
+.editor-toolbar select {
+  padding: 5px 22px 5px 8px;
+  border: 1px solid #e6ebe8;
+  border-radius: 6px;
+  color: #535f59;
+  background: #fff;
+  font-size: 9px;
+}
+
+.editor-wrap {
+  display: flex;
+  min-height: 220px;
+  overflow: hidden;
+  border: 1px solid #e5eae7;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.line-numbers {
+  display: flex;
+  flex-direction: column;
+  min-width: 32px;
+  padding: 10px 8px;
+  border-right: 1px solid #f0f2f1;
+  color: #b1bab6;
+  background: #fafbfa;
+  font: 10px/1.55 Consolas, monospace;
+  text-align: right;
+  user-select: none;
+}
+
+.editor-wrap textarea {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  padding: 10px 11px;
+  border: 0;
+  outline: 0;
+  color: #385249;
+  background: #fff;
+  font: 10px/1.55 Consolas, monospace;
+  tab-size: 2;
+}
+
+.test-inputs {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.test-inputs label {
+  display: grid;
+  gap: 4px;
+  color: #86918b;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.test-inputs textarea {
+  min-width: 0;
+  min-height: 48px;
+  resize: vertical;
+  padding: 6px 7px;
+  border: 1px solid #e5eae7;
+  border-radius: 6px;
+  color: #65716a;
+  background: #fff;
+  font: 9px/1.45 Consolas, monospace;
+}
+
+.editor-footer {
+  padding: 9px 1px 1px;
+}
+
+.editor-footer > span {
+  color: #a3aca8;
+  font-size: 8px;
+}
+
+.editor-footer > div {
+  display: flex;
+  gap: 7px;
+}
+
+.run-button,
+.submit-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid #e1e7e4;
+  border-radius: 7px;
+  color: #65716a;
+  background: #fff;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.submit-button {
+  border-color: #15956d;
+  color: #fff;
+  background: #15956d;
+}
+
+.run-button:disabled,
+.submit-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.execution-result {
+  display: grid;
+  gap: 4px;
+  margin-top: 9px;
+  padding: 9px 10px;
+  border: 1px solid #e8ecea;
+  border-radius: 7px;
+  color: #637069;
+  background: #fff;
+  font-size: 9px;
+}
+
+.execution-result strong {
+  color: #3c4942;
+}
+
+.execution-result small {
+  color: #77847d;
+}
+
+.execution-success {
+  border-color: #d5eee3;
+  background: #f3fbf7;
+}
+
+.execution-success strong {
+  color: #15835f;
+}
+
+.execution-error {
+  border-color: #f1d8d5;
+  background: #fff8f7;
+}
+
+.execution-error strong,
+.execution-error span {
+  color: #b44d43;
+}
+
+.judge-note {
+  margin: 7px 0 0;
+  color: #a0aaa5;
+  font-size: 8px;
+}
+
+.alternate-page {
+  max-width: 860px;
+  margin: 35px auto 0;
+}
+
+.alternate-page > h1 {
+  margin: 0;
+  color: #202a26;
+  font-size: 30px;
+}
+
+.leaderboard-card {
+  overflow: hidden;
+  margin-top: 25px;
+  border: 1px solid #e8edeb;
+  border-radius: 13px;
+  background: #fff;
+}
+
+.leader-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 120px 120px;
+  min-height: 58px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  border-bottom: 1px solid #eff2f0;
+  color: #69756f;
+  font-size: 12px;
+}
+
+.leader-row:last-child {
+  border-bottom: 0;
+}
+
+.leader-row > span:nth-child(2) {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #3d4943;
+  font-weight: 600;
+}
+
+.leader-row > strong {
+  color: #37453e;
+}
+
+.leader-head {
+  min-height: 38px;
+  color: #9aa49f;
+  background: #fafbfa;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+
+.leader-head > span:nth-child(2) {
+  color: inherit;
+}
+
+.rank-cell {
+  color: #79857e;
+  font-weight: 700;
+}
+
+.avatar-tiny {
+  width: 25px;
+  height: 25px;
+  font-size: 8px;
+}
+
+.leader-row.you {
+  background: #f0f9f5;
+}
+
+.leader-row.you > span:nth-child(2) i {
+  padding: 3px 6px;
+  border-radius: 5px;
+  color: #16815d;
+  background: #dff3e9;
+  font-size: 8px;
+  font-style: normal;
+}
+
+.profile-overview {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  margin-top: 25px;
+  padding: 19px;
+  border: 1px solid #e9eeeb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.avatar-large {
+  width: 58px;
+  height: 58px;
+  font-size: 17px;
+}
+
+.profile-overview h2 {
+  margin: 0 0 5px;
+  font-size: 18px;
+}
+
+.profile-overview p {
+  margin: 0 0 8px;
+  color: #85908a;
+  font-size: 10px;
+}
+
+.profile-tag {
+  color: #14815e;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 13px;
+  margin-top: 15px;
+}
+
+.auth-screen {
+  position: relative;
+  overflow: hidden;
+  grid-template-columns: minmax(0, 1.08fr) minmax(500px, 0.92fr);
+  background: #f7faf8;
+}
+
+.auth-showcase {
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 16% 85%, rgba(30, 176, 123, 0.25), transparent 40%),
+    radial-gradient(ellipse at 84% 19%, rgba(87, 132, 108, 0.22), transparent 36%),
+    #0b1512;
+}
+
+.auth-showcase::before,
+.auth-showcase::after {
+  animation: orbit-drift 24s ease-in-out infinite alternate;
+}
+
+.auth-showcase::after {
+  animation-delay: -8s;
+}
+
+.auth-brand {
+  gap: 13px;
+  font-size: 23px;
+}
+
+.auth-brand > span:last-child {
+  display: block;
+}
+
+.auth-brand small {
+  margin-top: 5px;
+  color: #81948a;
+  font: 700 8px/1 'DM Sans', sans-serif;
+  letter-spacing: 1.5px;
+}
+
+.showcase-content {
+  animation: showcase-enter 850ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.showcase-kicker > span,
+.foot-live-dot {
+  animation: live-pulse 2.2s ease-in-out infinite;
+}
+
+.showcase-content h1 {
+  max-width: 600px;
+  font-size: clamp(44px, 5.2vw, 72px);
+  letter-spacing: -4px;
+}
+
+.showcase-content > p {
+  max-width: 390px;
+}
+
+.showcase-visual {
+  margin-top: 20px;
+}
+
+.code-window {
+  animation: card-float 6s ease-in-out infinite;
+  backdrop-filter: blur(12px);
+  transition: border-color 250ms ease, box-shadow 250ms ease;
+}
+
+.code-window:hover {
+  border-color: rgba(113, 226, 171, 0.36);
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.34), 0 0 36px rgba(55, 194, 130, 0.08);
+}
+
+.window-language {
+  margin-left: auto;
+  padding: 4px 7px;
+  border: 1px solid rgba(191, 226, 207, 0.13);
+  border-radius: 5px;
+  color: #91b9a4;
+  font-size: 7px;
+}
+
+.float-badge {
+  animation: badge-float 5s ease-in-out infinite;
+  backdrop-filter: blur(10px);
+}
+
+.badge-rank {
+  animation-delay: -2.5s;
+}
+
+.showcase-features {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  margin-top: 2px;
+  color: #81968a;
+  font-size: 9px;
+}
+
+.showcase-features b {
+  margin-right: 3px;
+  color: #c2d5c9;
+  font: 600 12px 'Space Grotesk', sans-serif;
+}
+
+.showcase-features > i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #4e7560;
+}
+
+.showcase-foot > span:last-child {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.foot-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #50ce91;
+}
+
+.auth-side {
+  position: relative;
+  isolation: isolate;
+  padding: 42px clamp(28px, 5vw, 76px);
+  background:
+    radial-gradient(ellipse at 96% 10%, rgba(190, 241, 218, 0.78), transparent 34%),
+    radial-gradient(ellipse at 4% 94%, rgba(221, 237, 229, 0.54), transparent 40%),
+    #f8fbf9;
+}
+
+.auth-side::before,
+.auth-side::after {
+  position: absolute;
+  z-index: -1;
+  width: 330px;
+  height: 330px;
+  border: 1px solid rgba(53, 153, 110, 0.08);
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+}
+
+.auth-side::before {
+  top: -235px;
+  right: -135px;
+}
+
+.auth-side::after {
+  bottom: -245px;
+  left: -165px;
+  width: 390px;
+  height: 390px;
+}
+
+.auth-card {
+  position: relative;
+  width: min(100%, 432px);
+  padding: 37px 36px 25px;
+  border: 1px solid rgba(224, 235, 229, 0.9);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.91);
+  box-shadow: 0 26px 80px rgba(36, 72, 54, 0.1), 0 4px 16px rgba(36, 72, 54, 0.04);
+  animation: auth-card-enter 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  backdrop-filter: blur(16px);
+}
+
+.auth-heading {
+  margin-bottom: 21px;
+}
+
+.auth-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 23px;
+  padding: 6px 9px;
+  border: 1px solid #e7f1eb;
+  border-radius: 30px;
+  color: #72847a;
+  background: #f9fcfa;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.auth-kicker i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #25ad7d;
+  box-shadow: 0 0 0 3px rgba(37, 173, 125, 0.1);
+}
+
+.auth-eyebrow {
+  margin-bottom: 7px;
+  font-size: 8px;
+  letter-spacing: 1.65px;
+}
+
+.auth-heading h2 {
+  animation: heading-enter 400ms ease both;
+  font-size: clamp(23px, 2.4vw, 29px);
+  letter-spacing: -1.1px;
+}
+
+.auth-screen-register .auth-heading h2 {
+  animation-name: heading-enter-register;
+}
+
+.auth-heading > p:last-child {
+  margin-top: 7px;
+  font-size: 10px;
+}
+
+.auth-switch {
+  position: relative;
+  isolation: isolate;
+  gap: 5px;
+  margin-bottom: 18px;
+  padding: 4px;
+  border-color: #e9efeb;
+  background: #f2f6f3;
+}
+
+.auth-switch button {
+  z-index: 1;
+  min-height: 37px;
+  color: #87948c;
+  background: transparent;
+  font-size: 9px;
+}
+
+.auth-switch button.selected {
+  color: #26372f;
+  background: transparent;
+  box-shadow: none;
+}
+
+.auth-switch-indicator {
+  position: absolute;
+  z-index: 0;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 6.5px);
+  border: 1px solid #e8efeb;
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(31, 57, 43, 0.08);
+  transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.auth-switch-indicator.register {
+  transform: translateX(calc(100% + 5px));
+}
+
+.auth-form {
+  animation: form-enter 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.demo-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  padding: 10px 11px;
+  border-color: #e0f0e7;
+  color: #668273;
+  background: linear-gradient(110deg, #f3fbf6, #fbfdfb);
+  font-size: 8px;
+}
+
+.demo-notice-icon {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  color: #148361;
+  background: #e4f6ec;
+  font-size: 12px;
+}
+
+.demo-notice strong,
+.demo-notice small {
+  display: block;
+}
+
+.demo-notice strong {
+  margin-bottom: 2px;
+  color: #37634f;
+  font-size: 8px;
+}
+
+.demo-notice small {
+  font-size: 7px;
+}
+
+.auth-form > label,
+.password-label-row > label {
+  font-size: 9px;
+}
+
+.auth-form > label > span {
+  margin-left: 4px;
+  color: #9aa7a0;
+  font-size: 8px;
+  font-weight: 500;
+}
+
+.auth-form > input,
+.password-field > input {
+  height: 43px;
+  margin-bottom: 13px;
+  border-color: #e4ebe6;
+  background: #fcfdfc;
+  font-size: 10px;
+}
+
+.auth-form > input:focus,
+.password-field > input:focus {
+  border-color: #62b993;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(43, 168, 116, 0.09);
+}
+
+.password-label-row > span {
+  color: #a2ada7;
+  font-size: 8px;
+}
+
+.password-toggle {
+  top: 11px;
+  color: #158561;
+}
+
+.password-toggle:hover {
+  color: #0a6548;
+}
+
+.password-strength {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: -5px 0 13px;
+  color: #909d95;
+  font-size: 8px;
+}
+
+.password-strength-track {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+
+.password-strength-track i {
+  height: 3px;
+  flex: 1;
+  border-radius: 5px;
+  background: #e8eeea;
+  transition: background 200ms ease, transform 200ms ease;
+}
+
+.password-strength-track i.active {
+  background: #dbad56;
+  transform: scaleY(1.35);
+}
+
+.password-strength-track i.active.strength-3,
+.password-strength-track i.active.strength-4 {
+  background: #20a77a;
+}
+
+.password-hint {
+  font-size: 8px;
+}
+
+.remember-option {
+  margin: 2px 0 13px;
+  color: #76847b;
+  font-size: 8px;
+}
+
+.remember-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.remember-option .custom-check {
+  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+
+.remember-option input:checked + .custom-check {
+  transform: scale(1.05);
+}
+
+.remember-option input:focus-visible + .custom-check {
+  outline: 2px solid #58a98a;
+  outline-offset: 2px;
+}
+
+.auth-submit {
+  position: relative;
+  overflow: hidden;
+  min-height: 46px;
+  border-radius: 9px;
+  background: linear-gradient(105deg, #118663 0%, #19a77a 54%, #138b68 100%);
+  background-size: 180% 100%;
+  box-shadow: 0 7px 15px rgba(23, 153, 105, 0.17);
+  transition: background-position 350ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+
+.auth-submit:hover:not(:disabled) {
+  background-position: 100% 0;
+  box-shadow: 0 10px 20px rgba(23, 153, 105, 0.24);
+  transform: translateY(-1px);
+}
+
+.auth-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 15px 0 11px;
+  color: #a3aea7;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  height: 1px;
+  flex: 1;
+  background: #edf1ee;
+  content: '';
+}
+
+.guest-button {
+  display: flex;
+  width: 100%;
+  min-height: 39px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #e4ebe6;
+  border-radius: 9px;
+  color: #42534a;
+  background: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  transition: border-color 180ms ease, color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.guest-button > span {
+  color: #13936a;
+  font-size: 13px;
+}
+
+.guest-button:hover {
+  transform: translateY(-1px);
+  border-color: #badfce;
+  color: #166b4d;
+  background: #f8fcf9;
+}
+
+.auth-terms {
+  margin-top: 14px;
+  font-size: 7px;
+}
+
+.auth-bottom {
+  margin-top: 17px;
+  font-size: 7px;
+}
+
+.auth-trust-icon {
+  display: inline-grid;
+  width: 13px;
+  height: 13px;
+  place-items: center;
+  border-radius: 50%;
+  color: #17845e;
+  background: #e8f6ee;
+  font-size: 8px;
+}
+
+@keyframes auth-card-enter {
+  from { opacity: 0; transform: translateY(20px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes showcase-enter {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes form-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes heading-enter {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes heading-enter-register {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes card-float {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-7px) rotate(-1deg); }
+}
+
+@keyframes badge-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -6px; }
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.56; }
+}
+
+@keyframes orbit-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-14px, -12px, 0) scale(1.04); }
+}
+
+@media (max-width: 1100px) and (min-width: 861px) {
+  .auth-screen {
+    grid-template-columns: minmax(0, 1fr) minmax(450px, 0.95fr);
+  }
+
+  .auth-showcase {
+    padding-right: 34px;
+    padding-left: 42px;
+  }
+
+  .showcase-content h1 {
+    font-size: clamp(43px, 5vw, 60px);
+  }
+
+  .auth-side {
+    padding-right: 27px;
+    padding-left: 27px;
+  }
+
+  .auth-card {
+    padding-right: 28px;
+    padding-left: 28px;
+  }
+}
+
+@media (max-height: 790px) and (min-width: 861px) {
+  .auth-showcase {
+    padding-top: 25px;
+    padding-bottom: 19px;
+  }
+
+  .showcase-content {
+    padding-top: 16px;
+  }
+
+  .showcase-content h1 {
+    margin-top: 15px;
+    font-size: clamp(40px, 4.6vw, 59px);
+  }
+
+  .showcase-visual {
+    height: 235px;
+    margin-top: 8px;
+  }
+
+  .showcase-features {
+    margin-top: 0;
+  }
+
+  .auth-card {
+    padding-top: 26px;
+    padding-bottom: 19px;
+  }
+
+  .auth-kicker {
+    margin-bottom: 14px;
+  }
+
+  .auth-heading {
+    margin-bottom: 15px;
+  }
+
+  .auth-switch {
+    margin-bottom: 14px;
+  }
+}
+
+@media (max-width: 860px) {
+  .auth-screen {
+    min-height: 100svh;
+    background:
+      radial-gradient(ellipse at 90% 0%, rgba(185, 237, 211, 0.46), transparent 40%),
+      #f5faf7;
+  }
+
+  .auth-side {
+    min-height: 100svh;
+    padding: 32px 22px;
+    background: transparent;
+  }
+
+  .auth-card {
+    width: min(100%, 460px);
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-side {
+    padding: 20px 14px;
+  }
+
+  .auth-card {
+    padding: 27px 21px 20px;
+    border-radius: 17px;
+  }
+
+  .auth-kicker {
+    margin-bottom: 18px;
+  }
+
+  .auth-heading h2 {
+    font-size: 24px;
+  }
+
+  .auth-bottom {
+    font-size: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-screen *,
+  .auth-screen *::before,
+  .auth-screen *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 1120px) {
+  .main-area {
+    padding-right: 22px;
+    padding-left: 22px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .practice-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-intro {
+    border-right: 0;
+    border-bottom: 1px solid #ebefed;
+  }
+}
+
+@media (max-width: 860px) {
+  .auth-screen {
+    display: block;
+  }
+
+  .auth-showcase {
+    display: none;
+  }
+
+  .auth-side {
+    min-height: 100vh;
+    padding: 35px 24px;
+  }
+
+  .auth-mobile-mark {
+    display: grid;
+    margin-bottom: 22px;
+  }
+}
+
+@media (max-width: 760px) {
+  .sidebar {
+    position: static;
+    width: 62px;
+    flex: 0 0 62px;
+    align-items: center;
+    padding: 16px 7px;
+  }
+
+  .brand {
+    padding: 0 0 25px;
+  }
+
+  .brand > span:last-child,
+  .nav-label {
+    display: none;
+  }
+
+  .side-nav {
+    width: 100%;
+  }
+
+  .nav-item {
+    justify-content: center;
+    padding: 11px 5px;
+    font-size: 0;
+  }
+
+  .nav-item .icon {
+    font-size: 16px;
+  }
+
+  .nav-count,
+  .sidebar-bottom {
+    display: none;
+  }
+
+  .main-area {
+    width: calc(100% - 62px);
+    margin-left: 0;
+    padding: 0 15px 35px;
+  }
+
+  .date-label {
+    display: none;
+  }
+
+  .welcome-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .daily-button {
+    width: 100%;
+  }
+
+  .table-header,
+  .problem-row {
+    grid-template-columns: 24px minmax(120px, 1.5fr) 67px 18px;
+    gap: 5px;
+    padding: 0 8px;
+  }
+
+  .table-header > :nth-child(4),
+  .table-header > :nth-child(5),
+  .problem-row > :nth-child(4),
+  .problem-row > :nth-child(5) {
+    display: none;
+  }
+
+  .filters {
+    flex-wrap: wrap;
+  }
+
+  .search-field {
+    flex-basis: 100%;
+  }
+
+  .difficulty-progress {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .progress-title {
+    align-items: flex-start;
+  }
+
+  .profile-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .test-inputs {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-side {
+    padding: 27px 20px;
+  }
+
+  .auth-heading h2 {
+    font-size: 23px;
+  }
+
+  .auth-bottom {
+    font-size: 7px;
+  }
+
+  .main-area {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .stats-grid {
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 11px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+  }
+
+  .leader-row {
+    grid-template-columns: 45px 1fr 55px 60px;
+    gap: 7px;
+    padding: 0 9px;
+    font-size: 10px;
+  }
+
+  .leader-row.you > span:nth-child(2) i {
+    display: none;
+  }
+}
+
+.auth-screen {
+  grid-template-columns: minmax(0, 1.12fr) minmax(460px, 0.88fr);
+  overflow-x: clip;
+  background: #f5f4f0;
+}
+
+.auth-showcase {
+  padding: 30px clamp(34px, 5.4vw, 82px) 23px;
+  background:
+    radial-gradient(ellipse at 83% 75%, rgba(61, 105, 202, 0.23), transparent 34%),
+    radial-gradient(ellipse at 5% 5%, rgba(26, 189, 229, 0.14), transparent 32%),
+    linear-gradient(145deg, #100022 0%, #15112d 55%, #10223b 100%);
+}
+
+.auth-showcase::before,
+.auth-showcase::after {
+  border-color: rgba(134, 190, 248, 0.12);
+}
+
+.auth-showcase::before {
+  right: -310px;
+  bottom: -305px;
+  width: 680px;
+  height: 680px;
+}
+
+.auth-showcase::after {
+  right: -225px;
+  bottom: -220px;
+  width: 510px;
+  height: 510px;
+}
+
+.showcase-topline {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.auth-brand .brand-logo {
+  width: 43px;
+  height: 43px;
+  border: 1px solid rgba(24, 189, 229, 0.28);
+  border-radius: 11px;
+  background: #19002f;
+}
+
+.auth-brand .brand-accent {
+  color: #36cae9;
+}
+
+.auth-brand small {
+  color: #9299b2;
+}
+
+.showcase-nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 2.4vw, 34px);
+}
+
+.showcase-nav a {
+  color: #a6acc0;
+  font-size: 9px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+.showcase-nav a:hover {
+  color: #fff;
+}
+
+.showcase-nav a:last-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(161, 177, 219, 0.24);
+  border-radius: 7px;
+  color: #e4eafa;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.showcase-nav a:last-child span {
+  color: #43c8e5;
+  font-size: 12px;
+}
+
+.showcase-content {
+  width: min(660px, 100%);
+  padding-top: 18px;
+}
+
+.showcase-kicker {
+  gap: 10px;
+  color: #a9b4ca;
+  font-size: 8px;
+  letter-spacing: 2px;
+}
+
+.showcase-kicker > span {
+  background: #40cce7;
+  box-shadow: 0 0 16px rgba(64, 204, 231, 0.68);
+}
+
+.showcase-content h1 {
+  margin: 18px 0 13px;
+  font-size: clamp(51px, 6.1vw, 82px);
+  letter-spacing: -5px;
+  line-height: 0.99;
+}
+
+.showcase-content h1 > span {
+  color: #74d9ea;
+}
+
+.showcase-content > p {
+  max-width: 400px;
+  color: #a6aec3;
+  font-size: 11px;
+  line-height: 1.9;
+}
+
+.showcase-orb {
+  top: 6px;
+  right: 8%;
+  opacity: 0.75;
+}
+
+.showcase-visual {
+  height: 231px;
+  margin-top: 3px;
+}
+
+.visual-orbit {
+  border-color: rgba(78, 183, 225, 0.16);
+}
+
+.code-window {
+  width: min(410px, 82%);
+  border-color: rgba(143, 190, 226, 0.25);
+  background: rgba(16, 25, 49, 0.88);
+  box-shadow: 0 24px 70px rgba(3, 5, 19, 0.34);
+}
+
+.badge-streak,
+.badge-rank {
+  border-color: rgba(149, 185, 226, 0.23);
+  background: rgba(27, 36, 63, 0.94);
+}
+
+.badge-streak {
+  right: 5%;
+}
+
+.showcase-invitation {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: -1px 0 18px;
+}
+
+.showcase-cta {
+  display: inline-flex;
+  min-height: 39px;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 0 15px;
+  border: 1px solid rgba(102, 219, 237, 0.45);
+  border-radius: 6px;
+  color: #0d2033;
+  background: linear-gradient(105deg, #79deec, #41c3e0);
+  box-shadow: 0 9px 24px rgba(39, 181, 219, 0.14);
+  font-size: 9px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+.showcase-cta span {
+  font-size: 14px;
+}
+
+.showcase-cta:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 12px 27px rgba(39, 181, 219, 0.24);
+  transform: translateY(-2px);
+}
+
+.showcase-invitation-note {
+  color: #919bb2;
+  font-size: 8px;
+}
+
+.showcase-features {
+  gap: 12px;
+  color: #9ca8bf;
+  font-size: 8px;
+}
+
+.showcase-features b {
+  color: #72d8ed;
+  font-size: 11px;
+}
+
+.showcase-features > i {
+  background: #60738e;
+}
+
+.showcase-foot {
+  color: #848fa8;
+}
+
+.foot-live-dot {
+  background: #42cce6;
+}
+
+.auth-side {
+  padding: 34px clamp(25px, 4vw, 64px);
+  background:
+    radial-gradient(ellipse at 93% 8%, rgba(191, 228, 241, 0.64), transparent 33%),
+    radial-gradient(ellipse at 5% 93%, rgba(224, 217, 241, 0.5), transparent 38%),
+    #f6f4f0;
+}
+
+.auth-side::before,
+.auth-side::after {
+  border-color: rgba(45, 113, 169, 0.1);
+}
+
+.auth-card {
+  width: min(100%, 410px);
+  padding: 34px 32px 23px;
+  border-color: rgba(228, 225, 220, 0.92);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 24px 70px rgba(30, 37, 54, 0.09), 0 4px 14px rgba(30, 37, 54, 0.035);
+}
+
+.auth-card::before {
+  left: 32px;
+  width: 56px;
+  border-radius: 0 0 3px 3px;
+  background: #38bfdf;
+}
+
+.auth-kicker {
+  border-color: #e4e8ed;
+  border-radius: 4px;
+  color: #768193;
+  background: #fbfbfa;
+  letter-spacing: 1.05px;
+}
+
+.auth-kicker i {
+  border-radius: 1px;
+  background: #39bfdf;
+  box-shadow: 0 0 0 3px rgba(57, 191, 223, 0.12);
+}
+
+.auth-eyebrow {
+  color: #238ba8;
+}
+
+.auth-heading h2 {
+  color: #151b2a;
+}
+
+.auth-heading > p:last-child {
+  color: #788294;
+}
+
+.auth-switch {
+  border-color: #e6e8e7;
+  border-radius: 6px;
+  background: #f4f4f1;
+}
+
+.auth-switch button {
+  border-radius: 4px;
+}
+
+.auth-switch-indicator {
+  border-color: #e9e9e5;
+  border-radius: 4px;
+  box-shadow: 0 1px 5px rgba(34, 39, 50, 0.08);
+}
+
+.auth-form > input,
+.password-field > input {
+  border-radius: 5px;
+  background: #fbfbfa;
+}
+
+.auth-form > input:focus,
+.password-field > input:focus {
+  border-color: #49b8ce;
+  box-shadow: 0 0 0 3px rgba(54, 177, 203, 0.1);
+}
+
+.password-toggle,
+.guest-button > span {
+  color: #1686a3;
+}
+
+.auth-submit {
+  border-radius: 5px;
+  background: linear-gradient(105deg, #127c9b, #1b9fba 54%, #167994);
+  box-shadow: 0 7px 16px rgba(23, 132, 160, 0.17);
+}
+
+.auth-submit:hover:not(:disabled) {
+  box-shadow: 0 10px 20px rgba(23, 132, 160, 0.24);
+}
+
+.guest-button {
+  border-radius: 5px;
+}
+
+.guest-button:hover {
+  border-color: #abd8e1;
+  color: #11677e;
+  background: #f6fbfc;
+}
+
+.auth-bottom > span:first-child {
+  color: #537264;
+}
+
+.auth-trust-icon {
+  color: #167f9b;
+  background: #e8f6f8;
+}
+
+@media (max-width: 1100px) and (min-width: 861px) {
+  .auth-screen {
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 0.95fr);
+  }
+
+  .auth-showcase {
+    padding-right: 34px;
+    padding-left: 42px;
+  }
+
+  .showcase-content h1 {
+    font-size: clamp(48px, 5.5vw, 68px);
+  }
+}
+
+@media (max-height: 790px) and (min-width: 861px) {
+  .showcase-visual {
+    height: 205px;
+  }
+
+  .showcase-invitation {
+    margin-bottom: 11px;
+  }
+}
+
+@media (max-width: 860px) {
+  .auth-screen {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .auth-showcase {
+    display: flex;
+    min-height: 100svh;
+    padding: 27px clamp(22px, 7vw, 54px);
+  }
+
+  .showcase-topline {
+    margin-bottom: 14px;
+  }
+
+  .showcase-content {
+    padding-top: 22px;
+  }
+
+  .showcase-content h1 {
+    font-size: clamp(54px, 11vw, 78px);
+  }
+
+  .showcase-visual {
+    width: min(550px, 100%);
+    height: 215px;
+  }
+
+  .showcase-features {
+    margin-bottom: 16px;
+  }
+
+  .auth-side {
+    min-height: 100svh;
+    padding: 34px 22px;
+    background: #f6f4f0;
+  }
+}
+
+@media (max-width: 540px) {
+  .showcase-topline {
+    align-items: flex-start;
+  }
+
+  .auth-brand {
+    gap: 9px;
+    font-size: 19px;
+  }
+
+  .auth-brand .brand-logo {
+    width: 37px;
+    height: 37px;
+  }
+
+  .showcase-nav {
+    gap: 0;
+  }
+
+  .showcase-nav a:first-child {
+    display: none;
+  }
+
+  .showcase-nav a:last-child {
+    gap: 5px;
+    padding: 9px 8px;
+    font-size: 8px;
+  }
+
+  .showcase-content h1 {
+    font-size: clamp(47px, 12vw, 65px);
+    letter-spacing: -3.7px;
+  }
+
+  .showcase-content > p {
+    max-width: 340px;
+    font-size: 10px;
+  }
+
+  .showcase-orb {
+    top: 8px;
+    right: -6px;
+    transform: scale(0.75);
+    transform-origin: top right;
+  }
+
+  .showcase-visual {
+    height: 190px;
+  }
+
+  .code-window {
+    width: 88%;
+  }
+
+  .badge-streak {
+    right: 0;
+  }
+
+  .float-badge {
+    padding: 7px 8px;
+  }
+
+  .badge-rank {
+    left: 0;
+  }
+
+  .showcase-invitation {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .showcase-features {
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 7px;
+  }
+
+  .showcase-foot {
+    gap: 12px;
+    font-size: 7px;
+  }
+
+  .auth-side {
+    padding: 22px 14px;
+  }
+
+  .auth-card {
+    width: min(100%, 410px);
+    padding: 29px 21px 21px;
+  }
+}
+
+:root {
+  color: #211b32;
+  background: #f7f5fc;
+}
+
+.arena {
+  --green: #7653e8;
+  --ink: #211b32;
+  --muted: #77718a;
+  --line: #e9e5f2;
+  background: #f7f5fc;
+}
+
+.auth-showcase {
+  background:
+    radial-gradient(ellipse at 20% 82%, rgba(68, 111, 244, 0.24), transparent 42%),
+    radial-gradient(ellipse at 85% 15%, rgba(126, 81, 230, 0.24), transparent 39%),
+    #160b2d;
+}
+
+.auth-brand .brand-accent,
+.showcase-content h1 > span {
+  color: #47d9e8;
+}
+
+.showcase-kicker > span,
+.foot-live-dot {
+  background: #47d9e8;
+}
+
+.sidebar {
+  border-right-color: #281b43;
+  background: #1b1033;
+}
+
+.brand {
+  color: #f7f5ff;
+}
+
+.brand-accent {
+  color: #55d8e5;
+}
+
+.brand small,
+.nav-label,
+.nav-count {
+  color: #a99fbd;
+}
+
+.nav-item {
+  color: #c4bbd3;
+}
+
+.nav-item.active {
+  color: #fff;
+  background: #342252;
+}
+
+.streak-card {
+  border-color: #453153;
+  background: #2a1c40;
+}
+
+.streak-card strong,
+.profile-mini strong {
+  color: #f3effa;
+}
+
+.streak-card small,
+.profile-mini small {
+  color: #b4a9c5;
+}
+
+.profile-mini {
+  border-top-color: #453153;
+}
+
+.profile-mini > .icon {
+  color: #b4a9c5;
+}
+
+.main-area {
+  color: #211b32;
+}
+
+.topbar {
+  border-bottom-color: #e8e3f0;
+}
+
+.breadcrumbs strong,
+.welcome-row h1,
+.alternate-page h1,
+.progress-title h2,
+.section-heading h2,
+.stat-value {
+  color: #211b32;
+}
+
+.daily-button,
+.progress-panel,
+.stat-card,
+.problem-table,
+.practice-panel,
+.leaderboard-card,
+.editor-panel {
+  border-color: #e8e3f0;
+  box-shadow: 0 8px 24px rgba(37, 22, 71, 0.035);
+}
+
+.daily-button {
+  border-color: #dfd5fb;
+  background: #f0ebff;
+  color: #6845da;
+}
+
+.daily-button > span:first-child {
+  background: #7653e8;
+}
+
+.daily-button strong b,
+.progress-title button,
+.text-button {
+  color: #6845da;
+}
+
+.stat-progress i {
+  background: linear-gradient(90deg, #7653e8, #45cddd);
+}
+
+.nav-item.active .icon,
+.live-dot {
+  color: #55d8e5;
+}
+
+.run-button {
+  border-color: #dcd3f5;
+  color: #6040ce;
+  background: #f2effb;
+}
+
+.submit-button,
+.auth-submit {
+  border-color: #6d4be0;
+  background: linear-gradient(120deg, #704be1, #4e78ed);
+}
+
+.search-field:focus-within,
+.filters select:focus,
+.editor-toolbar select:focus,
+.auth-form input:focus,
+.test-inputs textarea:focus,
+.editor-wrap textarea:focus {
+  border-color: #8b72e9;
+  box-shadow: 0 0 0 3px rgba(118, 83, 232, 0.12);
+}
+
+.problem-row.selected {
+  background: #f5f2ff;
+}
+
+
+
+========== .\src\index.css ==========
+
+:root {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #58a98a;
+  outline-offset: 2px;
+}
+
+
+
+========== .\src\main.jsx ==========
+
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.jsx'
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+
+
+
+========== .\package.json ==========
+
+{
+  "name": "client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "metal-fx": "^2.0.11",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "thinking-orbs": "^0.3.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^10.10.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.6",
+    "globals": "^17.12.0",
+    "vite": "^8.3.0"
+  }
+}
+
