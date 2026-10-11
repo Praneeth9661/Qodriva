@@ -83,7 +83,7 @@ function makeStarter(module, language) {
 
 export default function QodrivaLearningExperience() {
   const [progress, setProgress] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('qodriva-learning-progress-v3') || '{}'); } catch { return {}; }
+    try { return JSON.parse(localStorage.getItem('qodriva-learning-progress-v4') || '{}'); } catch { return {}; }
   });
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState('All');
@@ -93,25 +93,20 @@ export default function QodrivaLearningExperience() {
   const [runMessage, setRunMessage] = useState('Your output will appear here.');
   const [showSolution, setShowSolution] = useState(false);
   const [activeProblem, setActiveProblem] = useState(0);
-  const [problemPage, setProblemPage] = useState(false);
-  const [solvedProblems, setSolvedProblems] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('qodriva-solved-problems-v1') || '{}'); } catch { return {}; }
-  });
 
   const paths = useMemo(() => PATHS.map(path => {
     const total = path.modules.length;
-    const done = path.modules.filter(m => m.problems.every((_, i) => solvedProblems[`${path.id}::${m.title}::${i}`])).length;
+    const done = path.modules.filter(m => progress[path.id]?.[m.title]).length;
     return { ...path, total, done };
-  }), [progress, solvedProblems]);
+  }), [progress]);
   const currentPath = selected ? PATHS.find(p => p.id === selected.pathId) : null;
   const currentModule = currentPath ? currentPath.modules.find(m => m.title === selected.moduleTitle) : null;
-  const completedCount = PATHS.reduce((sum, p) => sum + p.modules.filter(m => m.problems.every((_, i) => solvedProblems[`${p.id}::${m.title}::${i}`])).length, 0);
+  const completedCount = PATHS.reduce((sum, p) => sum + p.modules.filter(m => progress[p.id]?.[m.title]).length, 0);
   const totalLessons = PATHS.reduce((sum, p) => sum + p.modules.length, 0);
 
   function openModule(pathId, moduleTitle) {
     const module = PATHS.find(p => p.id === pathId)?.modules.find(m => m.title === moduleTitle);
     setSelected({ pathId, moduleTitle });
-    setProblemPage(false);
     setLanguage(pathId === 'java' ? 'Java' : pathId === 'python' || pathId === 'aiml' ? 'Python' : 'JavaScript');
     setEditorCode(makeStarter(module, pathId === 'java' ? 'Java' : pathId === 'python' || pathId === 'aiml' ? 'Python' : 'JavaScript'));
     setRunMessage('Ready when you are. Write your solution in the editor and select Run.');
@@ -125,14 +120,13 @@ export default function QodrivaLearningExperience() {
     setRunMessage(`Editor changed to ${nextLanguage}.`);
   }
 
-  function markProblemSolved(pathId, moduleTitle, problemIndex) {
-    const key = `${pathId}::${moduleTitle}::${problemIndex}`;
-    setSolvedProblems(previous => {
-      const next = { ...previous, [key]: true };
-      try { localStorage.setItem('qodriva-solved-problems-v1', JSON.stringify(next)); } catch {}
+  function toggleComplete(pathId, moduleTitle) {
+    setProgress(previous => {
+      const next = { ...previous, [pathId]: { ...(previous[pathId] || {}) } };
+      next[pathId][moduleTitle] = !next[pathId][moduleTitle];
+      try { localStorage.setItem('qodriva-learning-progress-v4', JSON.stringify(next)); } catch {}
       return next;
     });
-    setRunMessage('Problem marked solved. Your topic and syllabus progress have been updated.');
   }
 
   function runCode() {
@@ -146,7 +140,7 @@ export default function QodrivaLearningExperience() {
       const safeConsole = { log: (...args) => logs.push(args.map(v => typeof v === 'string' ? v : JSON.stringify(v)).join(' ')), error: (...args) => logs.push(args.join(' ')), warn: (...args) => logs.push(args.join(' ')) };
       const fn = new Function('console', `"use strict";\n${editorCode}\n`); // JavaScript-only local preview
       fn(safeConsole);
-      setRunMessage(logs.length ? logs.join('\n') : 'Executed successfully. No console output.');
+      setRunMessage(logs.length ? `Execution finished (not graded):\n${logs.join('\n')}\n\nNote: running successfully does not mean the solution is correct. This preview has no test-case judge.` : 'Executed successfully with no console output. Not graded: this preview has no correctness test runner.');
     } catch (error) {
       setRunMessage(`Error: ${error.message}`);
     }
@@ -159,51 +153,12 @@ export default function QodrivaLearningExperience() {
   });
 
   if (currentPath && currentModule) {
-    const done = currentModule.problems.every((_, i) => solvedProblems[`${currentPath.id}::${currentModule.title}::${i}`]);
+    const done = Boolean(progress[currentPath.id]?.[currentModule.title]);
     const currentProblem = currentModule.problems[activeProblem];
-    const problemSolved = Boolean(solvedProblems[`${currentPath.id}::${currentModule.title}::${activeProblem}`]);
-    if (problemPage) return (
-      <section className="qle-root qle-lesson-view qle-problem-page">
-        <div className="qle-lesson-topbar">
-          <button className="qle-ghost-button" onClick={() => setProblemPage(false)}>← Back to {currentModule.title}</button>
-          <span>{currentPath.title} / {currentModule.title} / Problem {activeProblem + 1}</span>
-        </div>
-        <header className="qle-lesson-heading">
-          <span className="qle-eyebrow">CODING CHALLENGE · {activeProblem + 1} OF {currentModule.problems.length}</span>
-          <h1>{currentProblem}</h1>
-          <p>{currentModule.explanation}</p>
-          <div className="qle-lesson-meta"><span>Topic: {currentModule.title}</span><span>{problemSolved ? '✓ Solved' : 'Not completed yet'}</span></div>
-        </header>
-        <div className="qle-problem-detail-grid">
-          <main className="qle-lesson-main">
-            <article className="qle-content-card">
-              <h2>Problem statement</h2>
-              <p>Write a solution for <strong>{currentProblem}</strong>. Explain or implement the approach for the selected language. Consider empty inputs, duplicate values, and boundary cases where relevant.</p>
-              <h3>Concepts to use</h3><ul className="qle-points">{currentModule.points.map(point => <li key={point}>{point}</li>)}</ul>
-              <h3>Example reference</h3><pre className="qle-code"><code>{currentModule.code}</code></pre>
-              <div className="qle-output"><span>EXPECTED EXAMPLE RESULT</span><pre>{currentModule.output}</pre></div>
-            </article>
-            <article className="qle-content-card qle-editor-card">
-              <div className="qle-editor-header"><div><span className="qle-eyebrow">QODRIVA CODE LAB</span><h2>Your solution</h2><p>Write your code below, then run it to inspect the output.</p></div>
-                <label className="qle-language-select">Language<select value={language} onChange={event => selectLanguage(event.target.value)}>{LANGUAGES.map(item => <option key={item}>{item}</option>)}</select></label>
-              </div>
-              <div className="qle-editor-toolbar"><span><b>solution.{language === 'JavaScript' ? 'js' : language === 'Python' ? 'py' : language === 'Java' ? 'java' : language === 'C++' ? 'cpp' : language === 'C' ? 'c' : 'html'}</b></span><button className="qle-ghost-button" onClick={() => setEditorCode(makeStarter(currentModule, language))}>Reset code</button></div>
-              <textarea className="qle-code-editor" value={editorCode} onChange={event => setEditorCode(event.target.value)} spellCheck="false" aria-label="Problem solution editor" placeholder="Type your solution here..." />
-              <div className="qle-run-row"><span>Run JavaScript locally; other languages need a backend runner.</span><button className="qle-primary-button" onClick={runCode}>▶ Run code</button></div>
-              <div className="qle-console"><div className="qle-console-heading"><span>OUTPUT / CONSOLE</span><button className="qle-ghost-button" onClick={() => setRunMessage('Your output will appear here.')}>Clear</button></div><pre>{runMessage}</pre></div>
-              <button className={problemSolved ? 'qle-complete-button is-done' : 'qle-complete-button'} disabled={problemSolved} onClick={() => markProblemSolved(currentPath.id, currentModule.title, activeProblem)}>{problemSolved ? '✓ Problem marked solved' : 'Mark problem solved'}</button>
-              <p className="qle-run-note">Only mark the problem solved after you have checked your approach and output. Automated correctness tests require a judge backend.</p>
-              <div className="qle-next-buttons"><button className="qle-outline-button" disabled={activeProblem === 0} onClick={() => { setActiveProblem(i => i - 1); setEditorCode(makeStarter(currentModule, language)); }}>← Previous problem</button><button className="qle-primary-button" disabled={activeProblem === currentModule.problems.length - 1} onClick={() => { setActiveProblem(i => i + 1); setEditorCode(makeStarter(currentModule, language)); setRunMessage('Next problem opened.'); }}>Next problem →</button></div>
-            </article>
-          </main>
-          <aside className="qle-lesson-sidebar"><h2>Problems in this topic</h2>{currentModule.problems.map((problem, index) => <button key={problem} className={`qle-module-row ${activeProblem === index ? 'is-active' : ''}`} onClick={() => { setActiveProblem(index); setEditorCode(makeStarter(currentModule, language)); setRunMessage('Problem opened.'); }}><span>{solvedProblems[`${currentPath.id}::${currentModule.title}::${index}`] ? '✓' : index + 1}</span><b>{problem}</b></button>)}</aside>
-        </div>
-      </section>
-    );
     return (
       <section className="qle-root qle-lesson-view">
         <div className="qle-lesson-topbar">
-          <button className="qle-ghost-button" onClick={() => { setSelected(null); setProblemPage(false); }}>← All learning paths</button>
+          <button className="qle-ghost-button" onClick={() => setSelected(null)}>← All learning paths</button>
           <span>{currentPath.title} <b>/</b> {currentModule.title}</span>
         </div>
         <header className="qle-lesson-heading">
@@ -239,17 +194,17 @@ export default function QodrivaLearningExperience() {
               </div>
               <div className="qle-problem-list">
                 {currentModule.problems.map((problem, index) => (
-                  <button key={problem} className={`qle-problem-item ${activeProblem === index ? 'is-selected' : ''}`} onClick={() => { setActiveProblem(index); setProblemPage(true); setEditorCode(makeStarter(currentModule, language)); setShowSolution(false); setRunMessage('Problem opened. Read the question, write your solution, then run it.'); }}>
-                    <span className="qle-problem-number">{solvedProblems[`${currentPath.id}::${currentModule.title}::${index}`] ? '✓' : String(index + 1).padStart(2, '0')}</span>
+                  <button key={problem} className={`qle-problem-item ${activeProblem === index ? 'is-selected' : ''}`} onClick={() => { setActiveProblem(index); setEditorCode(makeStarter(currentModule, language)); setRunMessage(`Opened: ${problem}. Your previous code was reset for this problem. Read the selected challenge and write your solution below.`); setShowSolution(false); }}>
+                    <span className="qle-problem-number">{String(index + 1).padStart(2, '0')}</span>
                     <span className="qle-problem-title">{problem}</span>
-                    <span className="qle-problem-arrow">{solvedProblems[`${currentPath.id}::${currentModule.title}::${index}`] ? 'Solved' : 'Open ↗'}</span>
+                    <span className="qle-problem-arrow">↗</span>
                   </button>
                 ))}
               </div>
               <div className="qle-current-problem">
                 <span className="qle-eyebrow">SELECTED CHALLENGE</span>
                 <h3>{currentProblem}</h3>
-                <p>Implement a solution for this challenge. Consider normal cases, empty input where applicable, and boundary conditions. Add your own test examples before submitting.</p>
+                <p>Implement <strong>{currentProblem}</strong>. Consider normal cases, empty input where applicable, and boundary conditions. Click Run code to inspect your program output. This preview does not automatically judge correctness; a trusted judge with test cases is required before a problem can be marked solved.</p>
               </div>
             </article>
 
@@ -268,7 +223,7 @@ export default function QodrivaLearningExperience() {
             </article>
 
             <div className="qle-complete-row">
-              <div className="qle-topic-status">{done ? '✓ Topic completed — all 10 problems solved' : `${currentModule.problems.filter((_, i) => solvedProblems[`${currentPath.id}::${currentModule.title}::${i}`]).length} of ${currentModule.problems.length} problems solved`}</div>
+              <button className={done ? 'qle-complete-button is-done' : 'qle-complete-button'} onClick={() => toggleComplete(currentPath.id, currentModule.title)}>{done ? '✓ Completed — mark incomplete' : 'Mark lesson complete ✓'}</button>
               <div className="qle-next-buttons">
                 <button className="qle-outline-button" disabled={currentPath.modules.findIndex(m => m.title === currentModule.title) === 0} onClick={() => { const i = currentPath.modules.findIndex(m => m.title === currentModule.title); openModule(currentPath.id, currentPath.modules[i - 1].title); }}>← Previous topic</button>
                 <button className="qle-primary-button" disabled={currentPath.modules.findIndex(m => m.title === currentModule.title) === currentPath.modules.length - 1} onClick={() => { const i = currentPath.modules.findIndex(m => m.title === currentModule.title); openModule(currentPath.id, currentPath.modules[i + 1].title); }}>Next topic →</button>
@@ -278,10 +233,10 @@ export default function QodrivaLearningExperience() {
 
           <aside className="qle-lesson-sidebar">
             <h2>Course modules</h2>
-            <p className="qle-sidebar-caption">{currentPath.modules.filter(m => m.problems.every((_, i) => solvedProblems[`${currentPath.id}::${m.title}::${i}`])).length} of {currentPath.modules.length} topics completed</p>
+            <p className="qle-sidebar-caption">{currentPath.modules.filter(m => progress[currentPath.id]?.[m.title]).length} of {currentPath.modules.length} topics completed</p>
             {currentPath.modules.map((module, index) => (
               <button key={module.title} className={`qle-module-row ${module.title === currentModule.title ? 'is-active' : ''}`} onClick={() => openModule(currentPath.id, module.title)}>
-                <span>{index + 1}</span><b>{module.title}</b><i>{module.problems.every((_, i) => solvedProblems[`${currentPath.id}::${module.title}::${i}`]) ? '✓' : `${module.problems.filter((_, i) => solvedProblems[`${currentPath.id}::${module.title}::${i}`]).length}/10`}</i>
+                <span>{index + 1}</span><b>{module.title}</b><i>{progress[currentPath.id]?.[module.title] ? '✓' : ''}</i>
               </button>
             ))}
             <div className="qle-sidebar-stat"><strong>{currentModule.problems.length}</strong><span>problems in this topic</span></div>
