@@ -269,3 +269,335 @@ button {
     ),
     #0b0e1b;
 }
+/* =========================================
+   QODRIVA — SIDEBAR LAYOUT FIX
+   ========================================= */
+
+:root {
+  --qodriva-sidebar-bg: #101222;
+  --qodriva-panel-bg: #171b2d;
+  --qodriva-border: rgba(148, 163, 184, 0.18);
+  --qodriva-text: #eef2ff;
+  --qodriva-muted: #9ca8c5;
+  --qodriva-cyan: #22d3ee;
+}
+
+/* Keep sizing predictable */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Prevent horizontal overflow */
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+  width: 100%;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+/* Sidebar containers */
+.sidebar,
+.app-sidebar,
+.workspace-sidebar,
+aside {
+  min-width: 0;
+}
+
+/* Common sidebar layout */
+.sidebar,
+.app-sidebar,
+.workspace-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 280px;
+  min-width: 250px;
+  height: 100vh;
+  height: 100dvh;
+  padding: 22px;
+  background: var(--qodriva-sidebar-bg);
+  border-right: 1px solid var(--qodriva-border);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Brand area */
+.sidebar-brand,
+.app-brand,
+.workspace-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 30px;
+  min-width: 0;
+}
+
+.sidebar-brand img,
+.app-brand img,
+.workspace-brand img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+/* Sidebar section heading */
+.sidebar-heading,
+.workspace-heading,
+.sidebar-label {
+  display: block;
+  margin: 16px 0 10px;
+  color: var(--qodriva-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+}
+
+/* Stack navigation vertically */
+.sidebar nav,
+.sidebar-nav,
+.sidebar-links,
+.workspace-nav,
+.app-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Navigation links */
+.sidebar nav a,
+.sidebar-nav a,
+.sidebar-links a,
+.workspace-nav a,
+.app-sidebar nav a,
+.sidebar button,
+.sidebar-nav button,
+.sidebar-links button,
+.workspace-nav button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 11px 13px;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--qodriva-muted);
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: left;
+  text-decoration: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.sidebar nav a:hover,
+.sidebar-nav a:hover,
+.sidebar-links a:hover,
+.workspace-nav a:hover,
+.app-sidebar nav a:hover,
+.sidebar button:hover,
+.sidebar-nav button:hover,
+.sidebar-links button:hover,
+.workspace-nav button:hover {
+  color: var(--qodriva-text);
+  background: rgba(148, 163, 184, 0.09);
+  border-color: var(--qodriva-border);
+}
+
+/* Active link */
+.sidebar nav a.active,
+.sidebar-nav a.active,
+.sidebar-links a.active,
+.workspace-nav a.active,
+.sidebar nav a[aria-current="page"] {
+  color: var(--qodriva-cyan);
+  background: rgba(34, 211, 238, 0.09);
+  border-color: rgba(34, 211, 238, 0.2);
+}
+
+/* Icons must not stretch */
+.sidebar nav a svg,
+.sidebar-nav a svg,
+.sidebar-links a svg,
+.workspace-nav a svg,
+.sidebar button svg {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+}
+
+/* Profile and streak area */
+.sidebar-profile,
+.sidebar-footer,
+.workspace-profile,
+.user-profile {
+  min-width: 0;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 22px;
+}
+
+.sidebar-profile *,
+.sidebar-footer *,
+.workspace-profile *,
+.user-profile * {
+  max-width: 100%;
+}
+
+/* User identity row */
+.sidebar-user,
+.sidebar-user-info,
+.workspace-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin: 12px 0;
+}
+
+.sidebar-user-name,
+.user-name,
+.workspace-user-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Sign-out button */
+.sidebar-profile button,
+.sidebar-footer button,
+.workspace-profile button,
+.user-profile button {
+  max-width: 100%;
+}
+
+/* Main workspace layout */
+.workspace-layout,
+.app-layout,
+.dashboard-layout {
+  display: flex;
+  align-items: stretch;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  min-width: 0;
+}
+
+.workspace-main,
+.app-main,
+.dashboard-main,
+.main-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Learning path content */
+.learning-paths,
+.learning-path-page,
+.learning-path-content {
+  width: 100%;
+  min-width: 0;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding: clamp(20px, 3vw, 44px);
+}
+
+.learning-paths h1,
+.learning-path-page h1,
+.learning-path-content h1 {
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.learning-paths p,
+.learning-path-page p,
+.learning-path-content p {
+  line-height: 1.7;
+}
+
+/* Course cards */
+.learning-path-grid,
+.learning-modules,
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  width: 100%;
+  min-width: 0;
+}
+
+.learning-path-grid > *,
+.learning-modules > *,
+.course-grid > * {
+  min-width: 0;
+}
+
+/* Tablets */
+@media (max-width: 900px) {
+  .sidebar,
+  .app-sidebar,
+  .workspace-sidebar {
+    width: 230px;
+    min-width: 210px;
+    padding: 16px;
+  }
+
+  .learning-path-grid,
+  .learning-modules,
+  .course-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Phones */
+@media (max-width: 640px) {
+  .workspace-layout,
+  .app-layout,
+  .dashboard-layout {
+    flex-direction: column;
+  }
+
+  .sidebar,
+  .app-sidebar,
+  .workspace-sidebar {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    max-height: none;
+    padding: 14px;
+    border-right: 0;
+    border-bottom: 1px solid var(--qodriva-border);
+  }
+
+  .sidebar-profile,
+  .sidebar-footer,
+  .workspace-profile,
+  .user-profile {
+    margin-top: 18px;
+  }
+
+  .learning-paths,
+  .learning-path-page,
+  .learning-path-content {
+    padding: 20px 16px;
+  }
+}

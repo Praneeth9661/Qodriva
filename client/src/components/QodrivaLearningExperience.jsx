@@ -83,7 +83,7 @@ function makeStarter(module, language) {
 
 export default function QodrivaLearningExperience() {
   const [progress, setProgress] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('qodriva-learning-progress-v4') || '{}'); } catch { return {}; }
+    try { return JSON.parse(localStorage.getItem('qodriva-learning-progress-v3') || '{}'); } catch { return {}; }
   });
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState('All');
@@ -91,6 +91,7 @@ export default function QodrivaLearningExperience() {
   const [language, setLanguage] = useState('JavaScript');
   const [editorCode, setEditorCode] = useState('');
   const [runMessage, setRunMessage] = useState('Your output will appear here.');
+  const [running, setRunning] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
   const [activeProblem, setActiveProblem] = useState(0);
 
@@ -124,25 +125,62 @@ export default function QodrivaLearningExperience() {
     setProgress(previous => {
       const next = { ...previous, [pathId]: { ...(previous[pathId] || {}) } };
       next[pathId][moduleTitle] = !next[pathId][moduleTitle];
-      try { localStorage.setItem('qodriva-learning-progress-v4', JSON.stringify(next)); } catch {}
+      try { localStorage.setItem('qodriva-learning-progress-v3', JSON.stringify(next)); } catch {}
       return next;
     });
   }
 
-  function runCode() {
-    if (!editorCode.trim()) { setRunMessage('Write some code before running it.'); return; }
-    if (language !== 'JavaScript') {
-      setRunMessage(`Your ${language} code is in the editor. To compile and run this language, connect a backend code-runner/judge API. This browser-only preview does not execute ${language}.`);
+  async function runCode(mode = 'run') {
+    if (!editorCode.trim()) {
+      setRunMessage('Write some code before running it.');
       return;
     }
+    if (language === 'HTML/CSS') {
+      setRunMessage('HTML/CSS preview is not supported by the Judge0 endpoint. Select JavaScript, Python, Java, C, or C++ to run code.');
+      return;
+    }
+    if (!currentPath || !currentModule) {
+      setRunMessage('Open a learning topic before running code.');
+      return;
+    }
+
+    const moduleIndex = currentPath.modules.findIndex(module => module.title === currentModule.title);
+    const apiBaseUrl = String(import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+    setRunning(true);
+    setRunMessage(mode === 'submit' ? 'Submitting solution and checking official test cases…' : 'Running the sample test…');
+
     try {
-      const logs = [];
-      const safeConsole = { log: (...args) => logs.push(args.map(v => typeof v === 'string' ? v : JSON.stringify(v)).join(' ')), error: (...args) => logs.push(args.join(' ')), warn: (...args) => logs.push(args.join(' ')) };
-      const fn = new Function('console', `"use strict";\n${editorCode}\n`); // JavaScript-only local preview
-      fn(safeConsole);
-      setRunMessage(logs.length ? `Execution finished (not graded):\n${logs.join('\n')}\n\nNote: running successfully does not mean the solution is correct. This preview has no test-case judge.` : 'Executed successfully with no console output. Not graded: this preview has no correctness test runner.');
+      const response = await fetch(`${apiBaseUrl}/api/learning-submissions`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pathId: currentPath.id,
+          moduleIndex,
+          problemIndex: activeProblem,
+          language,
+          sourceCode: editorCode,
+          mode,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.message || `Request failed (${response.status}).`);
+      }
+
+      const testSummary = Array.isArray(result.results) && result.results.length
+        ? result.results.map((test, index) => {
+            const status = test.passed ? 'PASS' : (test.status || 'CHECK');
+            const output = test.stdout ? `\nOutput: ${test.stdout.trim()}` : '';
+            const error = test.stderr || test.compileOutput;
+            return `Case ${index + 1}: ${status}${output}${error ? `\n${error}` : ''}`;
+          }).join('\n\n')
+        : '';
+      setRunMessage(`${result.status || 'Completed'}\n${result.message || ''}${testSummary ? `\n\n${testSummary}` : ''}`.trim());
     } catch (error) {
-      setRunMessage(`Error: ${error.message}`);
+      setRunMessage(`Execution error: ${error.message}\nCheck that you are signed in, the backend is running, and Judge0 is configured.`);
+    } finally {
+      setRunning(false);
     }
   }
 
@@ -194,7 +232,7 @@ export default function QodrivaLearningExperience() {
               </div>
               <div className="qle-problem-list">
                 {currentModule.problems.map((problem, index) => (
-                  <button key={problem} className={`qle-problem-item ${activeProblem === index ? 'is-selected' : ''}`} onClick={() => { setActiveProblem(index); setEditorCode(makeStarter(currentModule, language)); setRunMessage(`Opened: ${problem}. Your previous code was reset for this problem. Read the selected challenge and write your solution below.`); setShowSolution(false); }}>
+                  <button key={problem} className={`qle-problem-item ${activeProblem === index ? 'is-selected' : ''}`} onClick={() => { setActiveProblem(index); setRunMessage('Problem selected. Write your solution in the editor below.'); }}>
                     <span className="qle-problem-number">{String(index + 1).padStart(2, '0')}</span>
                     <span className="qle-problem-title">{problem}</span>
                     <span className="qle-problem-arrow">↗</span>
@@ -204,7 +242,7 @@ export default function QodrivaLearningExperience() {
               <div className="qle-current-problem">
                 <span className="qle-eyebrow">SELECTED CHALLENGE</span>
                 <h3>{currentProblem}</h3>
-                <p>Implement <strong>{currentProblem}</strong>. Consider normal cases, empty input where applicable, and boundary conditions. Click Run code to inspect your program output. This preview does not automatically judge correctness; a trusted judge with test cases is required before a problem can be marked solved.</p>
+                <p>Implement a solution for this challenge. Consider normal cases, empty input where applicable, and boundary conditions. Add your own test examples before submitting.</p>
               </div>
             </article>
 
@@ -217,9 +255,15 @@ export default function QodrivaLearningExperience() {
               </div>
               <div className="qle-editor-toolbar"><span><i className="qle-dot qle-dot-red" /><i className="qle-dot qle-dot-yellow" /><i className="qle-dot qle-dot-green" /> <b>solution.{language === 'JavaScript' ? 'js' : language === 'Python' ? 'py' : language === 'Java' ? 'java' : language === 'C++' ? 'cpp' : language === 'C' ? 'c' : 'html'}</b></span><button className="qle-ghost-button" onClick={() => setEditorCode(makeStarter(currentModule, language))}>Reset code</button></div>
               <textarea className="qle-code-editor" value={editorCode} onChange={event => setEditorCode(event.target.value)} spellCheck="false" aria-label="Code editor" placeholder="Type your solution here..." />
-              <div className="qle-run-row"><span>Tip: use the full editor area; you can resize it from the corner.</span><button className="qle-primary-button" onClick={runCode}>▶ Run code</button></div>
+              <div className="qle-run-row">
+                <span>Run checks the sample input. Submit checks the configured official test cases.</span>
+                <div className="qle-run-actions">
+                  <button className="qle-outline-button" disabled={running} onClick={() => runCode('run')}>{running ? 'Running…' : '▶ Run code'}</button>
+                  <button className="qle-primary-button" disabled={running} onClick={() => runCode('submit')}>{running ? 'Checking…' : '✓ Submit solution'}</button>
+                </div>
+              </div>
               <div className="qle-console"><div className="qle-console-heading"><span>OUTPUT / CONSOLE</span><button className="qle-ghost-button" onClick={() => setRunMessage('Your output will appear here.')}>Clear</button></div><pre>{runMessage}</pre></div>
-              <p className="qle-run-note">JavaScript runs in this local preview. Python, Java, C, and C++ require a backend code execution service to compile and run securely.</p>
+              <p className="qle-run-note">Code is sent to your authenticated backend and Judge0. A problem is only accepted when all official test cases configured on the server pass. Some learning problems still need official test cases added.</p>
             </article>
 
             <div className="qle-complete-row">

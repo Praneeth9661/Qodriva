@@ -13,17 +13,27 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 const app = express();
 const PORT = Number(process.env.PORT || 5000);
 const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
-const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? '' : crypto.randomBytes(32).toString('hex'));
-const STORAGE_MODE = process.env.STORAGE_MODE || (process.env.NODE_ENV === 'production' ? 'postgres' : 'memory');
+const JWT_SECRET =
+  process.env.JWT_SECRET ||
+  (process.env.NODE_ENV === 'production'
+    ? ''
+    : crypto.randomBytes(32).toString('hex'));
+
+const STORAGE_MODE =
+  process.env.STORAGE_MODE ||
+  (process.env.NODE_ENV === 'production' ? 'postgres' : 'memory');
+
 const scrypt = promisify(crypto.scrypt);
 
 if (!['postgres', 'mysql', 'memory'].includes(STORAGE_MODE)) {
   throw new Error('STORAGE_MODE must be "postgres", "mysql", or "memory".');
 }
 
-const developmentOrigins = process.env.NODE_ENV === 'production'
-  ? []
-  : ['http://localhost:5173', 'http://localhost:5000'];
+const developmentOrigins =
+  process.env.NODE_ENV === 'production'
+    ? []
+    : ['http://localhost:5173', 'http://localhost:5000'];
+
 const allowedClientOrigins = [
   ...developmentOrigins,
   ...(process.env.CLIENT_ORIGIN || '')
@@ -32,255 +42,156 @@ const allowedClientOrigins = [
     .filter(Boolean),
 ];
 
-app.use(cors({
-  origin: (origin, callback) => callback(null, !origin || allowedClientOrigins.includes(origin)),
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: (origin, callback) =>
+      callback(null, !origin || allowedClientOrigins.includes(origin)),
+    credentials: true,
+  })
+);
+
 app.use((req, res, next) => {
-  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next();
+  }
+
   const origin = req.get('Origin');
-  if (!origin || allowedClientOrigins.includes(origin)) return next();
-  return res.status(403).json({ message: 'This origin is not allowed to make API requests.' });
+
+  if (!origin || allowedClientOrigins.includes(origin)) {
+    return next();
+  }
+
+  return res
+    .status(403)
+    .json({ message: 'This origin is not allowed to make API requests.' });
 });
+
 app.use(express.json({ limit: '60kb' }));
 
 let sequelize = null;
 let UserModel = null;
 let SubmissionModel = null;
+
 const inMemoryUsers = [
   { id: 1, name: 'Ava Thompson', email: 'ava@example.com', role: 'Admin', status: 'Active' },
   { id: 2, name: 'Leo Martinez', email: 'leo@example.com', role: 'Editor', status: 'Active' },
   { id: 3, name: 'Nina Patel', email: 'nina@example.com', role: 'Viewer', status: 'Pending' },
 ];
+
 const problems = [
-  { id: 1, title: 'Two Sum', difficulty: 'Easy', acceptance: 'N/A', topics: ['Array', 'Hash Table'], solved: true, testInput: '4 2 7 11 15\n9', expectedOutput: '0 1', description: 'Given an array of integers nums and an integer target, return the indices of the two numbers such that they add up to target.', examples: [{ input: 'nums = [2,7,11,15], target = 9', output: '[0,1]' }, { input: 'nums = [3,2,4], target = 6', output: '[1,2]' }], constraints: ['2 ≤ nums.length ≤ 10⁴', '−10⁹ ≤ nums[i] ≤ 10⁹', 'Exactly one valid answer exists.'] },
-  { id: 2, title: 'Valid Parentheses', difficulty: 'Easy', acceptance: 'N/A', topics: ['String', 'Stack'], solved: true, testInput: '()', expectedOutput: 'true', description: 'Given a string s containing just the characters (), {}, and [], determine if the input string is valid.', examples: [{ input: 's = "()"', output: 'true' }, { input: 's = "([)]"', output: 'false' }], constraints: ['1 ≤ s.length ≤ 10⁴', 's consists of parentheses only: ()[]{}.'] },
-  { id: 3, title: 'Merge Intervals', difficulty: 'Medium', acceptance: 'N/A', topics: ['Array', 'Sorting'], solved: false, testInput: '4\n1 3\n2 6\n8 10\n15 18', expectedOutput: '1 6\n8 10\n15 18', description: 'Given an array of intervals, merge all overlapping intervals and return the non-overlapping intervals.', examples: [{ input: 'intervals = [[1,3],[2,6],[8,10],[15,18]]', output: '[[1,6],[8,10],[15,18]]' }], constraints: ['1 ≤ intervals.length ≤ 10⁴', 'Each interval contains a start and end value.'] },
-  { id: 4, title: 'Longest Substring Without Repeating Characters', difficulty: 'Medium', acceptance: 'N/A', topics: ['String', 'Sliding Window'], solved: false, testInput: 'abcabcbb', expectedOutput: '3', description: 'Given a string s, find the length of the longest substring without repeating characters.', examples: [{ input: 's = "abcabcbb"', output: '3' }, { input: 's = "bbbbb"', output: '1' }], constraints: ['0 ≤ s.length ≤ 5 × 10⁴', 's consists of English letters, digits, symbols and spaces.'] },
-  { id: 5, title: 'Binary Tree Level Order Traversal', difficulty: 'Medium', acceptance: 'N/A', topics: ['Tree', 'Breadth-First Search'], solved: false, testInput: '3 9 20 null null 15 7', expectedOutput: '3\n9 20\n15 7', description: 'Given the root of a binary tree, return the level order traversal of its nodes’ values from left to right, level by level.', examples: [{ input: 'root = [3,9,20,null,null,15,7]', output: '[[3],[9,20],[15,7]]' }], constraints: ['The number of nodes in the tree is in [0, 2000].', '−1000 ≤ Node.val ≤ 1000'] },
-  { id: 6, title: 'Coin Change', difficulty: 'Medium', acceptance: 'N/A', topics: ['Dynamic Programming'], solved: false, testInput: '3 1 2 5\n11', expectedOutput: '3', description: 'Given an integer array coins and an integer amount, return the fewest number of coins needed to make up that amount, or -1 if it cannot be made.', examples: [{ input: 'coins = [1,2,5], amount = 11', output: '3' }], constraints: ['1 ≤ coins.length ≤ 12', '0 ≤ amount ≤ 10⁴'] },
-  { id: 7, title: 'Course Schedule', difficulty: 'Medium', acceptance: 'N/A', topics: ['Graph', 'Depth-First Search'], solved: false, testInput: '2 1\n1 0', expectedOutput: 'true', description: 'There are numCourses courses and prerequisites. Return true if it is possible to finish all courses.', examples: [{ input: 'numCourses = 2, prerequisites = [[1,0]]', output: 'true' }], constraints: ['1 ≤ numCourses ≤ 2000', '0 ≤ prerequisites.length ≤ 5000'] },
-  { id: 8, title: 'Trapping Rain Water', difficulty: 'Hard', acceptance: 'N/A', topics: ['Array', 'Two Pointers'], solved: false, testInput: '12 0 1 0 2 1 0 1 3 2 1 2 1', expectedOutput: '6', description: 'Given n non-negative integers representing an elevation map, compute how much water it can trap after raining.', examples: [{ input: 'height = [0,1,0,2,1,0,1,3,2,1,2,1]', output: '6' }], constraints: ['n == height.length', '1 ≤ n ≤ 2 × 10⁴', '0 ≤ height[i] ≤ 10⁵'] },
   {
-  id: 129,
-  title: "Reverse a String",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["String"],
-  testInput: "qodriva",
-  description: "Given a string, print its characters in reverse order.",
-  examples: [{ input: '"hello"', output: '"olleh"' }],
-  constraints: ["1 <= string length <= 100000"]
-},
-{
-  id: 130,
-  title: "Find the Maximum Element",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["Array"],
-  testInput: "5\n3 9 2 7 4",
-  description: "Given an array of integers, print the maximum element.",
-  examples: [{ input: "[3, 9, 2, 7, 4]", output: "9" }],
-  constraints: ["1 <= n <= 100000"]
-},
-{
-  id: 131,
-  title: "Find the Minimum Element",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["Array"],
-  testInput: "5\n3 9 2 7 4",
-  description: "Given an array of integers, print the minimum element.",
-  examples: [{ input: "[3, 9, 2, 7, 4]", output: "2" }],
-  constraints: ["1 <= n <= 100000"]
-},
-{
-  id: 132,
-  title: "Check Palindrome",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["String", "Two Pointers"],
-  testInput: "madam",
-  description: "Determine whether the given string reads the same forward and backward.",
-  examples: [{ input: '"madam"', output: "true" }],
-  constraints: ["1 <= string length <= 100000"]
-},
-{
-  id: 133,
-  title: "Fizz Buzz",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["Math", "Simulation"],
-  testInput: "5",
-  description: "For integers from 1 to n, print Fizz for multiples of 3, Buzz for multiples of 5, FizzBuzz for multiples of both, and the number otherwise.",
-  examples: [{ input: "5", output: "1 2 Fizz 4 Buzz" }],
-  constraints: ["1 <= n <= 10000"]
-},
-{
-  id: 134,
-  title: "Count Vowels",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["String"],
-  testInput: "education",
-  description: "Count the vowels a, e, i, o, and u in the given string, ignoring case.",
-  examples: [{ input: '"education"', output: "5" }],
-  constraints: ["1 <= string length <= 100000"]
-},
-{
-  id: 135,
-  title: "Sum of Array Elements",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["Array"],
-  testInput: "5\n1 2 3 4 5",
-  description: "Read n integers and print their sum.",
-  examples: [{ input: "[1, 2, 3, 4, 5]", output: "15" }],
-  constraints: ["1 <= n <= 100000"]
-},
-{
-  id: 136,
-  title: "Second Largest Distinct Element",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["Array", "Sorting"],
-  testInput: "5\n4 1 7 7 3",
-  description: "Print the second-largest distinct value. If it does not exist, print -1.",
-  examples: [{ input: "[4, 1, 7, 7, 3]", output: "4" }],
-  constraints: ["1 <= n <= 100000"]
-},
-{
-  id: 137,
-  title: "Binary Search",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["Array", "Binary Search"],
-  testInput: "5\n1 3 5 7 9\n7",
-  description: "Find the zero-based index of a target in a sorted array, or print -1 if it is absent.",
-  examples: [{ input: "nums = [1,3,5,7,9], target = 7", output: "3" }],
-  constraints: ["1 <= n <= 100000", "The array is sorted in ascending order."]
-},
-{
-  id: 138,
-  title: "Move Zeroes",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["Array", "Two Pointers"],
-  testInput: "5\n0 1 0 3 12",
-  description: "Move all zeroes to the end while preserving the relative order of non-zero elements.",
-  examples: [{ input: "[0,1,0,3,12]", output: "[1,3,12,0,0]" }],
-  constraints: ["1 <= n <= 100000"]
-},
-{
-  id: 139,
-  title: "Missing Number",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["Array", "Math"],
-  testInput: "5\n3 0 1 4 5",
-  description: "An array contains distinct numbers from 0 through n with one missing. Find the missing number.",
-  examples: [{ input: "[3,0,1]", output: "2" }],
-  constraints: ["0 <= nums[i] <= n"]
-},
-{
-  id: 140,
-  title: "Valid Anagram",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["String", "Hash Table"],
-  testInput: "listen\nsilent",
-  description: "Determine whether two strings contain the same characters with the same frequencies.",
-  examples: [{ input: '"listen", "silent"', output: "true" }],
-  constraints: ["1 <= string length <= 100000"]
-},
-{
-  id: 141,
-  title: "Best Time to Buy and Sell Stock",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["Array", "Greedy"],
-  testInput: "6\n7 1 5 3 6 4",
-  description: "Find the maximum profit from one buy and one later sell. Return 0 if no profit is possible.",
-  examples: [{ input: "[7,1,5,3,6,4]", output: "5" }],
-  constraints: ["1 <= prices.length <= 100000"]
-},
-{
-  id: 142,
-  title: "Maximum Subarray Sum",
-  difficulty: "Medium",
-  acceptance: "—",
-  topics: ["Array", "Dynamic Programming"],
-  testInput: "9\n-2 1 -3 4 -1 2 1 -5 4",
-  description: "Find the largest sum of any non-empty contiguous subarray.",
-  examples: [{ input: "[-2,1,-3,4,-1,2,1,-5,4]", output: "6" }],
-  constraints: ["1 <= n <= 100000"]
-},
-{
-  id: 143,
-  title: "Product of Array Except Self",
-  difficulty: "Medium",
-  acceptance: "—",
-  topics: ["Array", "Prefix Sum"],
-  testInput: "4\n1 2 3 4",
-  description: "Return an array where each element is the product of all other elements, without using division.",
-  examples: [{ input: "[1,2,3,4]", output: "[24,12,8,6]" }],
-  constraints: ["2 <= n <= 100000"]
-},
-{
-  id: 144,
-  title: "Longest Common Prefix",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["String"],
-  testInput: "flower flow flight",
-  description: "Find the longest prefix shared by all given strings. Print an empty string if none exists.",
-  examples: [{ input: '["flower","flow","flight"]', output: '"fl"' }],
-  constraints: ["1 <= number of strings <= 200"]
-},
-{
-  id: 145,
-  title: "Climbing Stairs",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["Dynamic Programming"],
-  testInput: "5",
-  description: "You can climb one or two steps at a time. Count the distinct ways to reach step n.",
-  examples: [{ input: "5", output: "8" }],
-  constraints: ["1 <= n <= 45"]
-},
-{
-  id: 146,
-  title: "Number of Islands",
-  difficulty: "Medium",
-  acceptance: "—",
-  topics: ["Graph", "Depth-First Search", "Breadth-First Search"],
-  testInput: "3 3\n110\n010\n001",
-  description: "Given a grid of 1s (land) and 0s (water), count connected islands using horizontal and vertical neighbors.",
-  examples: [{ input: 'grid = [["1","1","0"],["0","1","0"],["0","0","1"]]', output: "2" }],
-  constraints: ["The grid has at least one row and one column."]
-},
-{
-  id: 147,
-  title: "First Non-Repeating Character",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["String", "Hash Table"],
-  testInput: "leetcode",
-  description: "Find the index of the first character that appears exactly once, or print -1 if none exists.",
-  examples: [{ input: '"leetcode"', output: "0" }],
-  constraints: ["1 <= string length <= 100000"]
-},
-{
-  id: 148,
-  title: "Merge Two Sorted Arrays",
-  difficulty: "Easy",
-  acceptance: "—",
-  topics: ["Array", "Two Pointers"],
-  testInput: "3 3\n1 3 5\n2 4 6",
-  description: "Merge two sorted arrays into one sorted array.",
-  examples: [{ input: "[1,3,5] and [2,4,6]", output: "[1,2,3,4,5,6]" }],
-  constraints: ["Both input arrays are sorted."]
-}
+    id: 1,
+    title: 'Two Sum',
+    difficulty: 'Easy',
+    acceptance: 'N/A',
+    topics: ['Array', 'Hash Table'],
+    solved: true,
+    testInput: '4 2 7 11 15\n9',
+    expectedOutput: '0 1',
+    description: 'Given an array of integers nums and an integer target, return the indices of the two numbers such that they add up to target.',
+    examples: [
+      { input: 'nums = [2,7,11,15], target = 9', output: '[0,1]' },
+      { input: 'nums = [3,2,4], target = 6', output: '[1,2]' },
+    ],
+    constraints: ['2 ≤ nums.length ≤ 10⁴', '−10⁹ ≤ nums[i] ≤ 10⁹', 'Exactly one valid answer exists.'],
+  },
+  {
+    id: 2,
+    title: 'Valid Parentheses',
+    difficulty: 'Easy',
+    acceptance: 'N/A',
+    topics: ['String', 'Stack'],
+    solved: true,
+    testInput: '()',
+    expectedOutput: 'true',
+    description: 'Given a string s containing just the characters (), {}, and [], determine if the input string is valid.',
+    examples: [
+      { input: 's = "()"', output: 'true' },
+      { input: 's = "([)]"', output: 'false' },
+    ],
+    constraints: ['1 ≤ s.length ≤ 10⁴', 's consists of parentheses only: ()[]{}.'],
+  },
+  {
+    id: 3,
+    title: 'Merge Intervals',
+    difficulty: 'Medium',
+    acceptance: 'N/A',
+    topics: ['Array', 'Sorting'],
+    solved: false,
+    testInput: '4\n1 3\n2 6\n8 10\n15 18',
+    expectedOutput: '1 6\n8 10\n15 18',
+    description: 'Given an array of intervals, merge all overlapping intervals and return the non-overlapping intervals.',
+    examples: [{ input: 'intervals = [[1,3],[2,6],[8,10],[15,18]]', output: '[[1,6],[8,10],[15,18]]' }],
+    constraints: ['1 ≤ intervals.length ≤ 10⁴', 'Each interval contains a start and end value.'],
+  },
+  {
+    id: 4,
+    title: 'Longest Substring Without Repeating Characters',
+    difficulty: 'Medium',
+    acceptance: 'N/A',
+    topics: ['String', 'Sliding Window'],
+    solved: false,
+    testInput: 'abcabcbb',
+    expectedOutput: '3',
+    description: 'Given a string s, find the length of the longest substring without repeating characters.',
+    examples: [
+      { input: 's = "abcabcbb"', output: '3' },
+      { input: 's = "bbbbb"', output: '1' },
+    ],
+    constraints: ['0 ≤ s.length ≤ 5 × 10⁴', 's consists of English letters, digits, symbols and spaces.'],
+  },
+  {
+    id: 5,
+    title: 'Binary Tree Level Order Traversal',
+    difficulty: 'Medium',
+    acceptance: 'N/A',
+    topics: ['Tree', 'Breadth-First Search'],
+    solved: false,
+    testInput: '3 9 20 null null 15 7',
+    expectedOutput: '3\n9 20\n15 7',
+    description: 'Given the root of a binary tree, return the level order traversal of its nodes’ values from left to right, level by level.',
+    examples: [{ input: 'root = [3,9,20,null,null,15,7]', output: '[[3],[9,20],[15,7]]' }],
+    constraints: ['The number of nodes in the tree is in [0, 2000].', '−1000 ≤ Node.val ≤ 1000'],
+  },
+  {
+    id: 6,
+    title: 'Coin Change',
+    difficulty: 'Medium',
+    acceptance: 'N/A',
+    topics: ['Dynamic Programming'],
+    solved: false,
+    testInput: '3 1 2 5\n11',
+    expectedOutput: '3',
+    description: 'Given an integer array coins and an integer amount, return the fewest number of coins needed to make up that amount, or -1 if it cannot be made.',
+    examples: [{ input: 'coins = [1,2,5], amount = 11', output: '3' }],
+    constraints: ['1 ≤ coins.length ≤ 12', '0 ≤ amount ≤ 10⁴'],
+  },
+  {
+    id: 7,
+    title: 'Course Schedule',
+    difficulty: 'Medium',
+    acceptance: 'N/A',
+    topics: ['Graph', 'Depth-First Search'],
+    solved: false,
+    testInput: '2 1\n1 0',
+    expectedOutput: 'true',
+    description: 'There are numCourses courses and prerequisites. Return true if it is possible to finish all courses.',
+    examples: [{ input: 'numCourses = 2, prerequisites = [[1,0]]', output: 'true' }],
+    constraints: ['1 ≤ numCourses ≤ 2000', '0 ≤ prerequisites.length ≤ 5000'],
+  },
+  {
+    id: 8,
+    title: 'Trapping Rain Water',
+    difficulty: 'Hard',
+    acceptance: 'N/A',
+    topics: ['Array', 'Two Pointers'],
+    solved: false,
+    testInput: '12 0 1 0 2 1 0 1 3 2 1 2 1',
+    expectedOutput: '6',
+    description: 'Given n non-negative integers representing an elevation map, compute how much water it can trap after raining.',
+    examples: [{ input: 'height = [0,1,0,2,1,0,1,3,2,1,2,1]', output: '6' }],
+    constraints: ['n == height.length', '1 ≤ n ≤ 2 × 10⁴', '0 ≤ height[i] ≤ 10⁵'],
+  },
 ];
 
 const judgeTestCases = {
@@ -289,14 +200,21 @@ const judgeTestCases = {
     { input: '3 3 2 4\n6', expected: '1 2' },
     { input: '4 3 3 8 9\n6', expected: '0 1' },
   ],
-  2: [{ input: '()', expected: 'true' }, { input: '([)]', expected: 'false' }],
+  2: [
+    { input: '()', expected: 'true' },
+    { input: '([)]', expected: 'false' },
+  ],
   3: [{ input: '4\n1 3\n2 6\n8 10\n15 18', expected: '1 6\n8 10\n15 18' }],
-  4: [{ input: 'abcabcbb', expected: '3' }, { input: 'bbbbb', expected: '1' }],
+  4: [
+    { input: 'abcabcbb', expected: '3' },
+    { input: 'bbbbb', expected: '1' },
+  ],
   5: [{ input: '3 9 20 null null 15 7', expected: '3\n9 20\n15 7' }],
   6: [{ input: '3 1 2 5\n11', expected: '3' }],
   7: [{ input: '2 1\n1 0', expected: 'true' }],
   8: [{ input: '12 0 1 0 2 1 0 1 3 2 1 2 1', expected: '6' }],
 };
+
 const inMemorySubmissions = [];
 
 const judgeLanguageIds = {
@@ -320,9 +238,7 @@ function normalizeUser(rawUser = {}) {
 function validateUser(payload = {}) {
   const user = normalizeUser(payload);
 
-  if (!user.name) {
-    throw new Error('Name is required');
-  }
+  if (!user.name) throw new Error('Name is required');
 
   if (!user.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email)) {
     throw new Error('A valid email is required');
@@ -341,32 +257,32 @@ async function initializeDatabase() {
   }
 
   let database;
+
   try {
     const { Sequelize, DataTypes } = require('sequelize');
+
     if (STORAGE_MODE === 'postgres') {
       if (!process.env.DATABASE_URL) {
         throw new Error('DATABASE_URL must be set when STORAGE_MODE=postgres.');
       }
+
       database = new Sequelize(process.env.DATABASE_URL, {
         dialect: 'postgres',
         logging: false,
       });
     } else {
-      const dbName = process.env.DB_NAME || 'fullstack_app';
-      const dbUser = process.env.DB_USER || 'root';
-      const dbPassword = process.env.DB_PASSWORD || '';
-      const dbHost = process.env.DB_HOST || 'localhost';
-      const dbPort = Number(process.env.DB_PORT || 3306);
-
-      database = new Sequelize(dbName, dbUser, dbPassword, {
-        host: dbHost,
-        port: dbPort,
-        dialect: 'mysql',
-        logging: false,
-        dialectOptions: {
-          connectTimeout: 20000,
-        },
-      });
+      database = new Sequelize(
+        process.env.DB_NAME || 'fullstack_app',
+        process.env.DB_USER || 'root',
+        process.env.DB_PASSWORD || '',
+        {
+          host: process.env.DB_HOST || 'localhost',
+          port: Number(process.env.DB_PORT || 3306),
+          dialect: 'mysql',
+          logging: false,
+          dialectOptions: { connectTimeout: 20000 },
+        }
+      );
     }
 
     await database.authenticate();
@@ -375,59 +291,18 @@ async function initializeDatabase() {
     UserModel = sequelize.define(
       'User',
       {
-        id: {
-          type: DataTypes.INTEGER,
-          primaryKey: true,
-          autoIncrement: true,
-        },
-        name: {
-          type: DataTypes.STRING,
-          allowNull: false,
-        },
-        email: {
-          type: DataTypes.STRING,
-          allowNull: false,
-          unique: true,
-        },
-        username: {
-          type: DataTypes.STRING(24),
-          allowNull: true,
-          unique: true,
-        },
-        passwordHash: {
-          type: DataTypes.STRING(255),
-          allowNull: true,
-          field: 'password_hash',
-        },
-        role: {
-          type: DataTypes.STRING,
-          defaultValue: 'Member',
-        },
-        status: {
-          type: DataTypes.STRING,
-          defaultValue: 'Active',
-        },
-        points: {
-          type: DataTypes.INTEGER,
-          allowNull: false,
-          defaultValue: 0,
-        },
-        solvedCount: {
-          type: DataTypes.INTEGER,
-          allowNull: false,
-          defaultValue: 0,
-          field: 'solved_count',
-        },
-        streak: {
-          type: DataTypes.INTEGER,
-          allowNull: false,
-          defaultValue: 0,
-        },
+        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        name: { type: DataTypes.STRING, allowNull: false },
+        email: { type: DataTypes.STRING, allowNull: false, unique: true },
+        username: { type: DataTypes.STRING(24), allowNull: true, unique: true },
+        passwordHash: { type: DataTypes.STRING(255), allowNull: true, field: 'password_hash' },
+        role: { type: DataTypes.STRING, defaultValue: 'Member' },
+        status: { type: DataTypes.STRING, defaultValue: 'Active' },
+        points: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+        solvedCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0, field: 'solved_count' },
+        streak: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
       },
-      {
-        tableName: 'users',
-        timestamps: false,
-      },
+      { tableName: 'users', timestamps: false }
     );
 
     SubmissionModel = sequelize.define(
@@ -441,24 +316,29 @@ async function initializeDatabase() {
         submittedAt: { type: DataTypes.DATE, allowNull: false, field: 'submitted_at' },
         firstSolve: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false, field: 'first_solve' },
       },
-      { tableName: 'submissions', timestamps: false },
+      { tableName: 'submissions', timestamps: false }
     );
 
-    await sequelize.sync();
+   await sequelize.sync();
     console.log(`Connected to ${STORAGE_MODE} database`);
     return true;
   } catch (error) {
     await database?.close().catch((closeError) => {
-      console.error('Failed to close the unavailable MySQL connection:', closeError.message);
+      console.error('Failed to close unavailable database connection:', closeError.message);
     });
+
     sequelize = null;
     UserModel = null;
     SubmissionModel = null;
+
     console.error(`${STORAGE_MODE} storage initialization failed:`, error.message);
-    const configurationError = STORAGE_MODE === 'postgres'
-      ? 'STORAGE_MODE=postgres is configured, but PostgreSQL could not be initialized. Check DATABASE_URL and ensure the database is available.'
-      : 'STORAGE_MODE=mysql is configured, but MySQL could not be initialized. Check DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, and ensure the database server is running.';
-    throw new Error(configurationError, { cause: error });
+
+    const message =
+      STORAGE_MODE === 'postgres'
+        ? 'STORAGE_MODE=postgres is configured, but PostgreSQL could not be initialized. Check DATABASE_URL and ensure the database is available.'
+        : 'STORAGE_MODE=mysql is configured, but MySQL could not be initialized. Check DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, and ensure the database server is running.';
+
+    throw new Error(message, { cause: error });
   }
 }
 
@@ -481,10 +361,13 @@ async function createUser(payload) {
       role: user.role,
       status: user.status,
     });
+
     return normalizeUser(created.toJSON());
   }
 
-  const nextId = inMemoryUsers.reduce((maxId, item) => Math.max(maxId, Number(item.id || 0)), 0) + 1;
+  const nextId =
+    inMemoryUsers.reduce((max, item) => Math.max(max, Number(item.id || 0)), 0) + 1;
+
   const newUser = { ...user, id: nextId };
   inMemoryUsers.push(newUser);
   return newUser;
@@ -495,9 +378,7 @@ async function updateUser(id, payload) {
 
   if (UserModel) {
     const existingUser = await UserModel.findByPk(id);
-    if (!existingUser) {
-      throw new Error('User not found');
-    }
+    if (!existingUser) throw new Error('User not found');
 
     await existingUser.update({
       name: user.name,
@@ -509,30 +390,24 @@ async function updateUser(id, payload) {
     return normalizeUser(existingUser.toJSON());
   }
 
-  const userIndex = inMemoryUsers.findIndex((entry) => Number(entry.id) === Number(id));
-  if (userIndex === -1) {
-    throw new Error('User not found');
-  }
+  const index = inMemoryUsers.findIndex((item) => Number(item.id) === Number(id));
+  if (index === -1) throw new Error('User not found');
 
-  inMemoryUsers[userIndex] = { ...inMemoryUsers[userIndex], ...user, id: Number(id) };
-  return inMemoryUsers[userIndex];
+  inMemoryUsers[index] = { ...inMemoryUsers[index], ...user, id: Number(id) };
+  return inMemoryUsers[index];
 }
 
 async function deleteUser(id) {
   if (UserModel) {
     const target = await UserModel.findByPk(id);
-    if (!target) {
-      throw new Error('User not found');
-    }
+    if (!target) throw new Error('User not found');
 
     await target.destroy();
     return true;
   }
 
-  const index = inMemoryUsers.findIndex((entry) => Number(entry.id) === Number(id));
-  if (index === -1) {
-    throw new Error('User not found');
-  }
+  const index = inMemoryUsers.findIndex((item) => Number(item.id) === Number(id));
+  if (index === -1) throw new Error('User not found');
 
   inMemoryUsers.splice(index, 1);
   return true;
@@ -559,72 +434,119 @@ async function listAccountSubmissions(userId, acceptedOnly = false) {
   if (SubmissionModel) {
     const where = { userId: Number(userId) };
     if (acceptedOnly) where.status = 'Accepted';
-    const rows = await SubmissionModel.findAll({ where, order: [['submittedAt', 'DESC']] });
+
+    const rows = await SubmissionModel.findAll({
+      where,
+      order: [['submittedAt', 'DESC']],
+    });
+
     return rows.map((row) => row.toJSON());
   }
-  return inMemorySubmissions.filter((submission) =>
-    submission.userId === Number(userId) && (!acceptedOnly || submission.status === 'Accepted'),
+
+  return inMemorySubmissions.filter(
+    (submission) =>
+      submission.userId === Number(userId) &&
+      (!acceptedOnly || submission.status === 'Accepted')
   );
 }
 
 function currentStreak(submissions) {
-  const completedDays = [...new Set(submissions.map((submission) =>
-    new Date(submission.submittedAt).toISOString().slice(0, 10),
-  ))].sort().reverse();
-  if (!completedDays.length) return 0;
+  const days = [
+    ...new Set(
+      submissions.map((submission) =>
+        new Date(submission.submittedAt).toISOString().slice(0, 10)
+      )
+    ),
+  ].sort().reverse();
+
+  if (!days.length) return 0;
 
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  if (completedDays[0] !== today && completedDays[0] !== yesterday) return 0;
+
+  if (days[0] !== today && days[0] !== yesterday) return 0;
 
   let streak = 1;
-  for (let index = 1; index < completedDays.length; index += 1) {
-    const previous = new Date(`${completedDays[index - 1]}T00:00:00.000Z`);
-    const current = new Date(`${completedDays[index]}T00:00:00.000Z`);
+
+  for (let i = 1; i < days.length; i += 1) {
+    const previous = new Date(`${days[i - 1]}T00:00:00.000Z`);
+    const current = new Date(`${days[i]}T00:00:00.000Z`);
+
     if ((previous - current) / 86400000 !== 1) break;
     streak += 1;
   }
+
   return streak;
 }
 
 async function saveSubmission(userId, problemId, language, status) {
   const submittedAt = new Date();
+
   if (SubmissionModel) {
     await sequelize.transaction(async (transaction) => {
-      const account = await UserModel.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
+      const account = await UserModel.findByPk(userId, {
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+
       if (!account) throw new Error('The signed-in account no longer exists.');
 
-      const previouslySolved = status === 'Accepted' && await SubmissionModel.findOne({
-        where: { userId: Number(userId), problemId: Number(problemId), status: 'Accepted' },
-        transaction,
-      });
-      await SubmissionModel.create({
-        userId: Number(userId),
-        problemId: Number(problemId),
-        language,
-        status,
-        submittedAt,
-        firstSolve: status === 'Accepted' && !previouslySolved,
-      }, { transaction });
+      const previouslySolved =
+        status === 'Accepted' &&
+        (await SubmissionModel.findOne({
+          where: {
+            userId: Number(userId),
+            problemId: Number(problemId),
+            status: 'Accepted',
+          },
+          transaction,
+        }));
+
+      await SubmissionModel.create(
+        {
+          userId: Number(userId),
+          problemId: Number(problemId),
+          language,
+          status,
+          submittedAt,
+          firstSolve: status === 'Accepted' && !previouslySolved,
+        },
+        { transaction }
+      );
 
       const accepted = await SubmissionModel.findAll({
         where: { userId: Number(userId), status: 'Accepted' },
         attributes: ['problemId', 'submittedAt'],
         transaction,
       });
-      const solvedProblemIds = [...new Set(accepted.map((submission) => Number(submission.problemId)))];
-      const points = solvedProblemIds.reduce((total, id) => total + pointsForProblem(id), 0);
-      account.set({ solvedCount: solvedProblemIds.length, points, streak: currentStreak(accepted) });
+
+      const solvedIds = [...new Set(accepted.map((item) => Number(item.problemId)))];
+      const points = solvedIds.reduce((total, id) => total + pointsForProblem(id), 0);
+
+      account.set({
+        solvedCount: solvedIds.length,
+        points,
+        streak: currentStreak(accepted),
+      });
+
       await account.save({ transaction });
     });
+
     return;
   }
 
   const account = inMemoryUsers.find((user) => Number(user.id) === Number(userId));
   if (!account) throw new Error('The signed-in account no longer exists.');
-  const previouslySolved = status === 'Accepted' && inMemorySubmissions.some((submission) =>
-    submission.userId === Number(userId) && submission.problemId === Number(problemId) && submission.status === 'Accepted',
-  );
+
+  const previouslySolved =
+    status === 'Accepted' &&
+    inMemorySubmissions.some(
+      (item) =>
+        item.userId === Number(userId) &&
+        item.problemId === Number(problemId) &&
+        item.status === 'Accepted'
+    );
+
   inMemorySubmissions.push({
     userId: Number(userId),
     problemId: Number(problemId),
@@ -633,22 +555,26 @@ async function saveSubmission(userId, problemId, language, status) {
     submittedAt,
     firstSolve: status === 'Accepted' && !previouslySolved,
   });
+
   const accepted = await listAccountSubmissions(userId, true);
-  const solvedProblemIds = [...new Set(accepted.map((submission) => Number(submission.problemId)))];
-  account.solvedCount = solvedProblemIds.length;
-  account.points = solvedProblemIds.reduce((total, id) => total + pointsForProblem(id), 0);
+  const solvedIds = [...new Set(accepted.map((item) => Number(item.problemId)))];
+
+  account.solvedCount = solvedIds.length;
+  account.points = solvedIds.reduce((total, id) => total + pointsForProblem(id), 0);
   account.streak = currentStreak(accepted);
 }
 
 async function getAccountProgress(userId) {
   const accepted = await listAccountSubmissions(userId, true);
-  const solvedIds = [...new Set(accepted.map((submission) => Number(submission.problemId)))];
+  const solvedIds = [...new Set(accepted.map((item) => Number(item.problemId)))];
   const difficultyCounts = { Easy: 0, Medium: 0, Hard: 0 };
-  const dailyProblemId = Math.floor(Date.now() / 86400000) % problems.length + 1;
+  const dailyProblemId = (Math.floor(Date.now() / 86400000) % problems.length) + 1;
+
   for (const id of solvedIds) {
     const difficulty = problems.find((problem) => problem.id === id)?.difficulty;
     if (difficulty) difficultyCounts[difficulty] += 1;
   }
+
   return {
     solvedIds,
     difficultyCounts,
@@ -662,17 +588,27 @@ async function getLeaderboard() {
   const accounts = UserModel
     ? (await UserModel.findAll()).map((account) => account.toJSON()).filter((account) => account.passwordHash)
     : inMemoryUsers.filter((account) => account.passwordHash);
-  const entries = await Promise.all(accounts.map(async (account) => {
-    const accepted = await listAccountSubmissions(account.id, true);
-    const solvedIds = [...new Set(accepted.map((submission) => Number(submission.problemId)))];
-    return {
-      username: String(account.username || account.name || 'Coder'),
-      solved: solvedIds.length,
-      points: solvedIds.reduce((total, id) => total + pointsForProblem(id), 0),
-    };
-  }));
+
+  const entries = await Promise.all(
+    accounts.map(async (account) => {
+      const accepted = await listAccountSubmissions(account.id, true);
+      const solvedIds = [...new Set(accepted.map((item) => Number(item.problemId)))];
+
+      return {
+        username: String(account.username || account.name || 'Coder'),
+        solved: solvedIds.length,
+        points: solvedIds.reduce((total, id) => total + pointsForProblem(id), 0),
+      };
+    })
+  );
+
   return entries
-    .sort((left, right) => right.points - left.points || right.solved - left.solved || left.username.localeCompare(right.username))
+    .sort(
+      (a, b) =>
+        b.points - a.points ||
+        b.solved - a.solved ||
+        a.username.localeCompare(b.username)
+    )
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
 }
 
@@ -684,47 +620,74 @@ async function hashPassword(password) {
 
 async function verifyPassword(password, passwordHash) {
   const [algorithm, salt, storedKey] = String(passwordHash || '').split('$');
-  if (algorithm !== 'scrypt' || !/^[a-f0-9]{32}$/.test(salt) || !/^[a-f0-9]{128}$/.test(storedKey)) return false;
+
+  if (
+    algorithm !== 'scrypt' ||
+    !/^[a-f0-9]{32}$/.test(salt || '') ||
+    !/^[a-f0-9]{128}$/.test(storedKey || '')
+  ) {
+    return false;
+  }
 
   const expectedKey = Buffer.from(storedKey, 'hex');
   const suppliedKey = await scrypt(password, salt, expectedKey.length);
-  return expectedKey.length === suppliedKey.length && crypto.timingSafeEqual(expectedKey, suppliedKey);
+
+  return (
+    expectedKey.length === suppliedKey.length &&
+    crypto.timingSafeEqual(expectedKey, suppliedKey)
+  );
 }
 
 let dummyPasswordHashPromise;
+
 function getDummyPasswordHash() {
   if (!dummyPasswordHashPromise) {
     dummyPasswordHashPromise = hashPassword(crypto.randomBytes(32).toString('hex'));
   }
+
   return dummyPasswordHashPromise;
 }
 
 function findCookie(req, cookieName) {
-  const cookieHeader = req.headers.cookie || '';
-  const cookie = cookieHeader.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${cookieName}=`));
+  const header = req.headers.cookie || '';
+  const cookie = header
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${cookieName}=`));
+
   return cookie ? cookie.slice(cookieName.length + 1) : '';
 }
 
 function writeAuthCookie(res, account, rememberMe) {
   const expiresIn = rememberMe ? '7d' : '8h';
   const maxAge = rememberMe ? 7 * 24 * 60 * 60 : 8 * 60 * 60;
+
   const token = jwt.sign({ sub: String(account.id) }, JWT_SECRET, {
     algorithm: 'HS256',
     audience: 'codearena-web',
     expiresIn,
     issuer: 'codearena',
   });
+
   const production = process.env.NODE_ENV === 'production';
   const secure = production ? '; Secure' : '';
   const sameSite = production ? 'None' : 'Strict';
-  res.setHeader('Set-Cookie', `codearena_session=${encodeURIComponent(token)}; HttpOnly; SameSite=${sameSite}; Path=/; Max-Age=${maxAge}${secure}`);
+
+  res.setHeader(
+    'Set-Cookie',
+    `codearena_session=${encodeURIComponent(token)}; HttpOnly; SameSite=${sameSite}; Path=/; Max-Age=${maxAge}${secure}`
+  );
 }
 
 function clearAuthCookie(res) {
   const production = process.env.NODE_ENV === 'production';
   const secure = production ? '; Secure' : '';
   const sameSite = production ? 'None' : 'Strict';
-  res.setHeader('Set-Cookie', `codearena_session=; HttpOnly; SameSite=${sameSite}; Path=/; Max-Age=0${secure}`);
+
+  res.setHeader(
+    'Set-Cookie',
+    `codearena_session=; HttpOnly; SameSite=${sameSite}; Path=/; Max-Age=0${secure}`
+  );
 }
 
 const authRateLimit = rateLimit({
@@ -743,6 +706,7 @@ app.use('/api/auth', (_req, res, next) => {
 
 async function findAccountByEmail(email) {
   if (UserModel) return UserModel.findOne({ where: { email } });
+
   return inMemoryUsers.find((account) => account.email.toLowerCase() === email) || null;
 }
 
@@ -752,49 +716,73 @@ async function findAccountByUsername(username) {
       where: sequelize.where(sequelize.fn('LOWER', sequelize.col('username')), username),
     });
   }
-  return inMemoryUsers.find((account) => String(account.username || account.name).toLowerCase() === username) || null;
+
+  return (
+    inMemoryUsers.find(
+      (account) => String(account.username || account.name).toLowerCase() === username
+    ) || null
+  );
 }
 
 async function findAccountById(id) {
   if (UserModel) return UserModel.findByPk(id);
+
   return inMemoryUsers.find((account) => Number(account.id) === Number(id)) || null;
 }
 
 async function requireAuth(req, res, next) {
   if (!JWT_SECRET) {
-    return res.status(503).json({ message: 'Authentication is unavailable until JWT_SECRET is configured.' });
+    return res.status(503).json({
+      message: 'Authentication is unavailable until JWT_SECRET is configured.',
+    });
   }
 
   try {
     const token = findCookie(req, 'codearena_session');
-    if (!token) return res.status(401).json({ message: 'Please sign in to continue.' });
+
+    if (!token) {
+      return res.status(401).json({ message: 'Please sign in to continue.' });
+    }
 
     const payload = jwt.verify(token, JWT_SECRET, {
       algorithms: ['HS256'],
       audience: 'codearena-web',
       issuer: 'codearena',
     });
+
     const account = await findAccountById(payload.sub);
+
     if (!account) {
       clearAuthCookie(res);
-      return res.status(401).json({ message: 'Your session is no longer valid. Please sign in again.' });
+      return res.status(401).json({
+        message: 'Your session is no longer valid. Please sign in again.',
+      });
     }
 
     req.authAccount = publicAccount(account.toJSON ? account.toJSON() : account);
     return next();
   } catch (error) {
-    if (error instanceof jwt.JsonWebTokenError || error instanceof jwt.TokenExpiredError) {
+    if (
+      error instanceof jwt.JsonWebTokenError ||
+      error instanceof jwt.TokenExpiredError
+    ) {
       clearAuthCookie(res);
-      return res.status(401).json({ message: 'Your session has expired. Please sign in again.' });
+      return res.status(401).json({
+        message: 'Your session has expired. Please sign in again.',
+      });
     }
+
     return next(error);
   }
 }
 
 function requireAdmin(req, res, next) {
   if (req.authAccount.role !== 'Admin') {
-    return res.status(403).json({ message: 'Administrator access is required for user management.' });
+    return res.status(403).json({
+      message: 'Administrator access is required for user management.',
+    });
   }
+
   return next();
 }
 
@@ -809,22 +797,32 @@ app.get('/api/health', (_req, res) => {
 
 app.post('/api/auth/register', authRateLimit, async (req, res) => {
   if (!JWT_SECRET) {
-    return res.status(503).json({ message: 'Authentication is unavailable until JWT_SECRET is configured.' });
+    return res.status(503).json({
+      message: 'Authentication is unavailable until JWT_SECRET is configured.',
+    });
   }
 
-  const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
-  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  const username =
+    typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+  const email =
+    typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   const password = req.body?.password;
   const rememberMe = req.body?.rememberMe === true;
 
   if (!/^[A-Za-z0-9_]{3,24}$/.test(username)) {
-    return res.status(400).json({ message: 'Username must be 3–24 characters and use only letters, numbers, or underscores.' });
+    return res.status(400).json({
+      message: 'Username must be 3–24 characters and use only letters, numbers, or underscores.',
+    });
   }
+
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({ message: 'Enter a valid email address.' });
   }
+
   if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
-    return res.status(400).json({ message: 'Password must be between 8 and 128 characters.' });
+    return res.status(400).json({
+      message: 'Password must be between 8 and 128 characters.',
+    });
   }
 
   try {
@@ -832,11 +830,20 @@ app.post('/api/auth/register', authRateLimit, async (req, res) => {
       findAccountByEmail(email),
       findAccountByUsername(username.toLowerCase()),
     ]);
-    if (existingEmail) return res.status(409).json({ message: 'An account with this email already exists.' });
-    if (existingUsername) return res.status(409).json({ message: 'That username is already taken.' });
+
+    if (existingEmail) {
+      return res.status(409).json({
+        message: 'An account with this email already exists.',
+      });
+    }
+
+    if (existingUsername) {
+      return res.status(409).json({ message: 'That username is already taken.' });
+    }
 
     const passwordHash = await hashPassword(password);
     let account;
+
     if (UserModel) {
       account = await UserModel.create({
         name: username,
@@ -850,50 +857,95 @@ app.post('/api/auth/register', authRateLimit, async (req, res) => {
         streak: 0,
       });
     } else {
-      const nextId = inMemoryUsers.reduce((maxId, user) => Math.max(maxId, Number(user.id || 0)), 0) + 1;
-      account = { id: nextId, name: username, username: username.toLowerCase(), email, passwordHash, role: 'Member', status: 'Active', points: 0, solvedCount: 0, streak: 0 };
+      const nextId =
+        inMemoryUsers.reduce((max, user) => Math.max(max, Number(user.id || 0)), 0) + 1;
+
+      account = {
+        id: nextId,
+        name: username,
+        username: username.toLowerCase(),
+        email,
+        passwordHash,
+        role: 'Member',
+        status: 'Active',
+        points: 0,
+        solvedCount: 0,
+        streak: 0,
+      };
+
       inMemoryUsers.push(account);
     }
 
     writeAuthCookie(res, account, rememberMe);
-    return res.status(201).json({ user: publicAccount(account.toJSON ? account.toJSON() : account) });
+
+    return res.status(201).json({
+      user: publicAccount(account.toJSON ? account.toJSON() : account),
+    });
   } catch (error) {
     if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(409).json({ message: 'An account with this email or username already exists.' });
+      return res.status(409).json({
+        message: 'An account with this email or username already exists.',
+      });
     }
+
     console.error('Account registration failed:', error.message);
-    return res.status(500).json({ message: 'Unable to create your account right now.' });
+
+    return res.status(500).json({
+      message: 'Unable to create your account right now.',
+    });
   }
 });
 
 app.post('/api/auth/login', authRateLimit, async (req, res) => {
   if (!JWT_SECRET) {
-    return res.status(503).json({ message: 'Authentication is unavailable until JWT_SECRET is configured.' });
+    return res.status(503).json({
+      message: 'Authentication is unavailable until JWT_SECRET is configured.',
+    });
   }
 
-  const identifier = typeof req.body?.identifier === 'string' ? req.body.identifier.trim().toLowerCase() : '';
+  const identifier =
+    typeof req.body?.identifier === 'string'
+      ? req.body.identifier.trim().toLowerCase()
+      : '';
+
   const password = req.body?.password;
   const rememberMe = req.body?.rememberMe === true;
-  if (!identifier || identifier.length > 254 || typeof password !== 'string' || password.length > 128) {
-    return res.status(400).json({ message: 'Enter your email or username and password.' });
+
+  if (
+    !identifier ||
+    identifier.length > 254 ||
+    typeof password !== 'string' ||
+    password.length > 128
+  ) {
+    return res.status(400).json({
+      message: 'Enter your email or username and password.',
+    });
   }
 
   try {
     const account = identifier.includes('@')
       ? await findAccountByEmail(identifier)
       : await findAccountByUsername(identifier);
+
     const rawAccount = account?.toJSON ? account.toJSON() : account;
     const passwordHash = rawAccount?.passwordHash || await getDummyPasswordHash();
     const passwordMatches = await verifyPassword(password, passwordHash);
+
     if (!rawAccount?.passwordHash || !passwordMatches) {
-      return res.status(401).json({ message: 'Invalid email/username or password.' });
+      return res.status(401).json({
+        message: 'Invalid email/username or password.',
+      });
     }
 
     writeAuthCookie(res, rawAccount, rememberMe);
+
     return res.json({ user: publicAccount(rawAccount) });
   } catch (error) {
     console.error('Account sign-in failed:', error.message);
-    return res.status(500).json({ message: 'Unable to sign in right now.' });
+
+    return res.status(500).json({
+      message: 'Unable to sign in right now.',
+    });
   }
 });
 
@@ -901,31 +953,40 @@ app.get('/api/auth/me', requireAuth, async (req, res, next) => {
   try {
     const progress = await getAccountProgress(req.authAccount.id);
     const leaderboard = await getLeaderboard();
-    const rank = leaderboard.findIndex((entry) => entry.username === req.authAccount.username) + 1;
-    res.json({
+
+    const rank =
+      leaderboard.findIndex(
+        (entry) => entry.username === req.authAccount.username
+      ) + 1;
+
+    return res.json({
       user: { ...req.authAccount, streak: progress.streak },
       ...progress,
       rank: rank || null,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
 app.post('/api/auth/logout', (_req, res) => {
   clearAuthCookie(res);
-  res.status(204).send();
+  return res.status(204).send();
 });
 
 app.get('/api/problems', (_req, res) => {
-  res.json(problems.map(({ expectedOutput, solved, ...problem }) => problem));
+  return res.json(
+    problems.map(({ expectedOutput, solved, ...problem }) => problem)
+  );
 });
 
 app.get('/api/problems/:id', (req, res) => {
   const problemId = Number(req.params.id);
+
   const problem = Number.isSafeInteger(problemId)
     ? problems.find((item) => item.id === problemId)
     : null;
+
   if (!problem) {
     return res.status(404).json({ message: 'Problem not found.' });
   }
@@ -936,47 +997,93 @@ app.get('/api/problems/:id', (req, res) => {
 
 app.get('/api/leaderboard', async (_req, res, next) => {
   try {
-    res.json(await getLeaderboard());
+    return res.json(await getLeaderboard());
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 
 app.post('/api/submissions', requireAuth, async (req, res) => {
   const { problemId, language, sourceCode, mode, stdin } = req.body || {};
-  const selectedProblem = problems.find((problem) => problem.id === Number(problemId));
+
+  const selectedProblem = problems.find(
+    (problem) => problem.id === Number(problemId)
+  );
+
   if (!selectedProblem) {
-    return res.status(400).json({ message: 'Choose a valid problem before running code.' });
+    return res.status(400).json({
+      message: 'Choose a valid problem before running code.',
+    });
   }
+
   if (!judgeLanguageIds[language]) {
-    return res.status(400).json({ message: 'Choose a supported programming language.' });
+    return res.status(400).json({
+      message: 'Choose a supported programming language.',
+    });
   }
-  if (typeof sourceCode !== 'string' || !sourceCode.trim() || sourceCode.length > 50000) {
-    return res.status(400).json({ message: 'Source code must contain 1 to 50,000 characters.' });
+
+  if (
+    typeof sourceCode !== 'string' ||
+    !sourceCode.trim() ||
+    sourceCode.length > 50000
+  ) {
+    return res.status(400).json({
+      message: 'Source code must contain 1 to 50,000 characters.',
+    });
   }
+
   if (mode === 'run' && (typeof stdin !== 'string' || stdin.length > 10000)) {
-    return res.status(400).json({ message: 'Standard input must be a string no longer than 10,000 characters.' });
+    return res.status(400).json({
+      message: 'Standard input must be a string no longer than 10,000 characters.',
+    });
   }
+
   if (mode !== 'run' && mode !== 'submit') {
-    return res.status(400).json({ message: 'Mode must be either run or submit.' });
+    return res.status(400).json({
+      message: 'Mode must be either run or submit.',
+    });
   }
-  const baseUrl = process.env.JUDGE0_API_URL ? process.env.JUDGE0_API_URL.replace(/\/+$/, '') : null;
+
+  const baseUrl = process.env.JUDGE0_API_URL
+    ? process.env.JUDGE0_API_URL.replace(/\/+$/, '')
+    : null;
+
   if (!baseUrl) {
-    return res.status(503).json({ message: 'Code execution is not configured. Set JUDGE0_API_URL in server/.env to enable the isolated Judge0 runner.' });
+    return res.status(503).json({
+      message: 'Code execution is not configured. Set JUDGE0_API_URL in server/.env to enable the isolated Judge0 runner.',
+    });
   }
 
   const headers = { 'Content-Type': 'application/json' };
-  if (process.env.JUDGE0_API_KEY) headers['X-RapidAPI-Key'] = process.env.JUDGE0_API_KEY;
-  if (process.env.JUDGE0_API_HOST) headers['X-RapidAPI-Host'] = process.env.JUDGE0_API_HOST;
-  if (process.env.JUDGE0_AUTH_TOKEN) headers['X-Auth-Token'] = process.env.JUDGE0_AUTH_TOKEN;
+
+  if (process.env.JUDGE0_API_KEY) {
+    headers['X-RapidAPI-Key'] = process.env.JUDGE0_API_KEY;
+  }
+
+  if (process.env.JUDGE0_API_HOST) {
+    headers['X-RapidAPI-Host'] = process.env.JUDGE0_API_HOST;
+  }
+
+  if (process.env.JUDGE0_AUTH_TOKEN) {
+    headers['X-Auth-Token'] = process.env.JUDGE0_AUTH_TOKEN;
+  }
 
   try {
     const runJudge = async (input, officialExpectedOutput) => {
       const timeoutMs = Number(process.env.JUDGE0_TIMEOUT_MS || 30000);
       const pollIntervalMs = Number(process.env.JUDGE0_POLL_INTERVAL_MS || 750);
-      if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 120000
-        || !Number.isInteger(pollIntervalMs) || pollIntervalMs < 100 || pollIntervalMs > 10000) {
-        throw new Error('JUDGE0_TIMEOUT_MS must be 1000–120000 and JUDGE0_POLL_INTERVAL_MS must be 100–10000.');
+
+      if (
+        !Number.isInteger(timeoutMs) ||
+        timeoutMs < 1000 ||
+        timeoutMs > 120000 ||
+        !Number.isInteger(pollIntervalMs) ||
+        pollIntervalMs < 100 ||
+        pollIntervalMs > 10000
+      ) {
+        throw new Error(
+          'JUDGE0_TIMEOUT_MS must be 1000–120000 and JUDGE0_POLL_INTERVAL_MS must be 100–10000.'
+        );
       }
 
       const requestJudge = async (url, options) => {
@@ -985,52 +1092,83 @@ app.post('/api/submissions', requireAuth, async (req, res) => {
           headers,
           signal: AbortSignal.timeout(timeoutMs),
         });
-        let data;
+
+        const body = await response.text();
+        let data = {};
+
         try {
-          data = await response.json();
-        } catch (error) {
-          console.error('Judge0 returned invalid JSON:', error.message);
+          data = body.trim() ? JSON.parse(body) : {};
+        } catch {
           throw new Error('The code execution service returned an invalid response.');
         }
+
         if (!response.ok) {
-          console.error('Judge0 request failed:', response.status, data.message || data.error || 'Unknown response');
-          throw new Error('The code execution service rejected the request. Check the Judge0 server configuration.');
+          throw new Error(
+            'The code execution service rejected the request. Check the Judge0 server configuration.'
+          );
         }
+
         return data;
       };
 
-      const submission = await requestJudge(`${baseUrl}/submissions?base64_encoded=false`, {
-        method: 'POST',
-        body: JSON.stringify({
-          source_code: sourceCode,
-          language_id: judgeLanguageIds[language],
-          stdin: input,
-        }),
-      });
+      const submission = await requestJudge(
+        `${baseUrl}/submissions?base64_encoded=false`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            source_code: sourceCode,
+            language_id: judgeLanguageIds[language],
+            stdin: input,
+          }),
+        }
+      );
+
       let result = submission;
+
       if (typeof submission.token === 'string' && submission.token) {
         const deadline = Date.now() + timeoutMs;
-        while (result.status?.id === undefined || result.status?.id === 1 || result.status?.id === 2) {
+
+        while (
+          result.status?.id === undefined ||
+          result.status?.id === 1 ||
+          result.status?.id === 2
+        ) {
           if (Date.now() >= deadline) {
             throw new Error('Code execution timed out while waiting for the Judge0 result.');
           }
-          await new Promise((resolve) => setTimeout(resolve, Math.min(pollIntervalMs, deadline - Date.now())));
+
+          await new Promise((resolve) =>
+            setTimeout(
+              resolve,
+              Math.min(pollIntervalMs, deadline - Date.now())
+            )
+          );
+
           result = await requestJudge(
             `${baseUrl}/submissions/${encodeURIComponent(submission.token)}?base64_encoded=false`,
-            { method: 'GET' },
+            { method: 'GET' }
           );
         }
       }
+
       if (!Number.isInteger(result.status?.id)) {
-        throw new Error('The code execution service did not return a final submission status.');
+        throw new Error(
+          'The code execution service did not return a final submission status.'
+        );
       }
 
-      const judgeStatus = result.status?.description || 'Execution error';
       const stdout = result.stdout || '';
-      const accepted = result.status?.id === 3
-        && (officialExpectedOutput === null || stdout.trim() === officialExpectedOutput.trim());
+      const accepted =
+        result.status.id === 3 &&
+        (officialExpectedOutput === null ||
+          stdout.trim() === officialExpectedOutput.trim());
+
       return {
-        status: accepted ? 'Accepted' : result.status?.id === 3 ? 'Wrong Answer' : judgeStatus,
+        status: accepted
+          ? 'Accepted'
+          : result.status.id === 3
+            ? 'Wrong Answer'
+            : result.status.description || 'Execution error',
         stdout,
         stderr: result.stderr || '',
         time: result.time || null,
@@ -1041,9 +1179,12 @@ app.post('/api/submissions', requireAuth, async (req, res) => {
       const result = await runJudge(stdin, null);
       const successful = result.status === 'Accepted';
       const status = successful ? 'Run complete' : result.status;
+
       return res.json({
         status,
-        message: successful ? (result.stdout.trim() || 'Program completed with no output.') : status,
+        message: successful
+          ? result.stdout.trim() || 'Program completed with no output.'
+          : status,
         passed: 0,
         total: 0,
         results: [{ ...result, status }],
@@ -1052,61 +1193,219 @@ app.post('/api/submissions', requireAuth, async (req, res) => {
 
     const cases = judgeTestCases[selectedProblem.id];
     const results = [];
+
     for (const testCase of cases) {
       const result = await runJudge(testCase.input, testCase.expected);
       results.push(result);
+
       if (result.status !== 'Accepted') break;
     }
-    const passed = results.filter((result) => result.status === 'Accepted').length;
-    const status = passed === cases.length ? 'Accepted' : results[results.length - 1].status;
-    await saveSubmission(req.authAccount.id, selectedProblem.id, language, status);
+
+    const passed = results.filter(
+      (result) => result.status === 'Accepted'
+    ).length;
+
+    const status =
+      passed === cases.length
+        ? 'Accepted'
+        : results[results.length - 1].status;
+
+    await saveSubmission(
+      req.authAccount.id,
+      selectedProblem.id,
+      language,
+      status
+    );
+
     const progress = await getAccountProgress(req.authAccount.id);
     const leaderboard = await getLeaderboard();
-    const rank = leaderboard.findIndex((entry) => entry.username === req.authAccount.username) + 1;
+
+    const rank =
+      leaderboard.findIndex(
+        (entry) => entry.username === req.authAccount.username
+      ) + 1;
+
     return res.json({
       status,
-      message: status === 'Accepted' ? 'All test cases passed.' : `${passed}/${cases.length} test cases passed.`,
+      message:
+        status === 'Accepted'
+          ? 'All test cases passed.'
+          : `${passed}/${cases.length} test cases passed.`,
       passed,
       total: cases.length,
       results,
-      user: { ...req.authAccount, solvedCount: progress.solvedIds.length, streak: progress.streak,
-        points: progress.solvedIds.reduce((total, id) => total + pointsForProblem(id), 0) },
+      user: {
+        ...req.authAccount,
+        solvedCount: progress.solvedIds.length,
+        streak: progress.streak,
+        points: progress.solvedIds.reduce(
+          (total, id) => total + pointsForProblem(id),
+          0
+        ),
+      },
       ...progress,
       rank: rank || null,
       leaderboard,
     });
   } catch (error) {
     console.error('Judge0 execution failed:', error.message);
-    const message = error.name === 'TimeoutError' || error.message.includes('timed out')
-      ? 'Code execution timed out. Check the Judge0 service and try again.'
-      : error.message.startsWith('The code execution service rejected')
-        ? error.message
-        : error.message.startsWith('JUDGE0_') || error.message.startsWith('The code execution service')
-        ? error.message
-        : 'Could not reach the code execution service. Check its URL and availability.';
+
+    const message =
+      error.name === 'TimeoutError' || error.message.includes('timed out')
+        ? 'Code execution timed out. Check the Judge0 service and try again.'
+        : error.message.startsWith('The code execution service')
+          ? error.message
+          : 'Could not reach the code execution service. Check its URL and availability.';
+
     return res.status(502).json({ message });
   }
 });
 
+// Learning Path judge: expected answers remain on the server.
 
-// Learning Path judge: server-owned test cases. Never accept a client-provided expected answer.
 const learningProblemCases = {
-  'dsa::0::0': { title: 'Find the maximum element', sampleInput: '5\n4 7 2 9 1\n', statement: 'Given n integers, print the largest value.', inputFormat: 'First line: n. Second line: n space-separated integers.', outputFormat: 'Print the maximum integer.', constraints: '1 ≤ n ≤ 100000; values are integers.', cases: [{input:'5\n4 7 2 9 1\n', expected:'9'}, {input:'1\n-8\n', expected:'-8'}, {input:'4\n-5 -2 -9 -3\n', expected:'-2'}] },
-  'dsa::0::1': { title: 'Find the minimum element', sampleInput: '5\n4 7 2 9 1\n', statement: 'Given n integers, print the smallest value.', inputFormat: 'First line: n. Second line: n space-separated integers.', outputFormat: 'Print the minimum integer.', constraints: '1 ≤ n ≤ 100000; values are integers.', cases: [{input:'5\n4 7 2 9 1\n', expected:'1'}, {input:'1\n-8\n', expected:'-8'}, {input:'4\n-5 -2 -9 -3\n', expected:'-9'}] },
-  'dsa::0::2': { title: 'Reverse an array in place', sampleInput: '5\n1 2 3 4 5\n', statement: 'Read an array and print its elements in reverse order.', inputFormat: 'First line: n. Second line: n space-separated integers.', outputFormat: 'Print the reversed values separated by spaces.', constraints: '1 ≤ n ≤ 100000.', cases: [{input:'5\n1 2 3 4 5\n', expected:'5 4 3 2 1'}, {input:'1\n7\n', expected:'7'}, {input:'4\n-1 0 3 8\n', expected:'8 3 0 -1'}] },
-  'dsa::0::3': { title: 'Rotate an array by k positions', sampleInput: '5\n1 2 3 4 5\n2\n', statement: 'Rotate the array right by k positions.', inputFormat: 'Line 1: n. Line 2: n integers. Line 3: k.', outputFormat: 'Print the rotated array separated by spaces.', constraints: '1 ≤ n ≤ 100000; k ≥ 0.', cases: [{input:'5\n1 2 3 4 5\n2\n', expected:'4 5 1 2 3'}, {input:'3\n1 2 3\n0\n', expected:'1 2 3'}, {input:'4\n1 2 3 4\n6\n', expected:'3 4 1 2'}] },
-  'dsa::0::4': { title: 'Remove duplicates from a sorted array', sampleInput: '6\n1 1 2 2 2 3\n', statement: 'Given a sorted array, print each distinct value once, preserving order.', inputFormat: 'First line: n. Second line: n sorted integers.', outputFormat: 'Print unique values separated by spaces.', constraints: '1 ≤ n ≤ 100000; input is sorted in non-decreasing order.', cases: [{input:'6\n1 1 2 2 2 3\n', expected:'1 2 3'}, {input:'4\n5 5 5 5\n', expected:'5'}, {input:'5\n-2 -2 0 1 1\n', expected:'-2 0 1'}] },
-  'dsa::0::5': { title: 'Move all zeroes to the end', sampleInput: '6\n0 1 0 3 12 0\n', statement: 'Move every zero to the end while preserving the relative order of non-zero elements.', inputFormat: 'First line: n. Second line: n integers.', outputFormat: 'Print the resulting array separated by spaces.', constraints: '1 ≤ n ≤ 100000.', cases: [{input:'6\n0 1 0 3 12 0\n', expected:'1 3 12 0 0 0'}, {input:'3\n1 2 3\n', expected:'1 2 3'}, {input:'4\n0 0 0 0\n', expected:'0 0 0 0'}] },
-  'dsa::0::6': { title: 'Find the second-largest distinct value', sampleInput: '5\n4 7 2 9 7\n', statement: 'Print the second-largest distinct number. If it does not exist, print -1.', inputFormat: 'First line: n. Second line: n integers.', outputFormat: 'Print the second-largest distinct value, or -1.', constraints: '1 ≤ n ≤ 100000.', cases: [{input:'5\n4 7 2 9 7\n', expected:'7'}, {input:'3\n5 5 5\n', expected:'-1'}, {input:'4\n-4 -1 -2 -3\n', expected:'-2'}] },
-  'dsa::0::7': { title: 'Check whether a string is a palindrome', sampleInput: 'racecar\n', statement: 'Print true if the input line reads the same forwards and backwards; otherwise print false.', inputFormat: 'One line containing the string.', outputFormat: 'Print true or false.', constraints: '1 ≤ string length ≤ 100000; comparison is case-sensitive.', cases: [{input:'racecar\n', expected:'true'}, {input:'hello\n', expected:'false'}, {input:'abba\n', expected:'true'}] },
-  'dsa::0::8': { title: 'Count character frequencies', sampleInput: 'banana\n', statement: 'Count each character and print characters in ascending character order, one per line as character and count.', inputFormat: 'One line containing the string.', outputFormat: 'One `character count` pair per line, sorted by character.', constraints: '1 ≤ string length ≤ 100000; input contains no whitespace.', cases: [{input:'banana\n', expected:'a 3\nb 1\nn 2'}, {input:'abc\n', expected:'a 1\nb 1\nc 1'}, {input:'zzza\n', expected:'a 1\nz 3'}] },
-  'dsa::0::9': { title: 'Find the longest common prefix', sampleInput: '3\nflower\nflow\nflight\n', statement: 'Given n strings, print their longest common prefix. Print - if no common prefix exists.', inputFormat: 'First line: n. Then n strings, one per line.', outputFormat: 'Print the longest common prefix, or - if it is empty.', constraints: '1 ≤ n ≤ 1000; each string length ≤ 1000.', cases: [{input:'3\nflower\nflow\nflight\n', expected:'fl'}, {input:'3\ndog\nracecar\ncar\n', expected:'-'}, {input:'2\ninterview\nintermediate\n', expected:'inter'}] },
+  'dsa::0::0': {
+    title: 'Find the maximum element',
+    sampleInput: '5\n4 7 2 9 1\n',
+    statement: 'Given n integers, print the largest value.',
+    inputFormat: 'First line: n. Second line: n space-separated integers.',
+    outputFormat: 'Print the maximum integer.',
+    constraints: '1 ≤ n ≤ 100000; values are integers.',
+    cases: [
+      { input: '5\n4 7 2 9 1\n', expected: '9' },
+      { input: '1\n-8\n', expected: '-8' },
+      { input: '4\n-5 -2 -9 -3\n', expected: '-2' },
+    ],
+  },
+  'dsa::0::1': {
+    title: 'Find the minimum element',
+    sampleInput: '5\n4 7 2 9 1\n',
+    statement: 'Given n integers, print the smallest value.',
+    inputFormat: 'First line: n. Second line: n space-separated integers.',
+    outputFormat: 'Print the minimum integer.',
+    constraints: '1 ≤ n ≤ 100000; values are integers.',
+    cases: [
+      { input: '5\n4 7 2 9 1\n', expected: '1' },
+      { input: '1\n-8\n', expected: '-8' },
+      { input: '4\n-5 -2 -9 -3\n', expected: '-9' },
+    ],
+  },
+  'dsa::0::2': {
+    title: 'Reverse an array in place',
+    sampleInput: '5\n1 2 3 4 5\n',
+    statement: 'Read an array and print its elements in reverse order.',
+    inputFormat: 'First line: n. Second line: n space-separated integers.',
+    outputFormat: 'Print the reversed values separated by spaces.',
+    constraints: '1 ≤ n ≤ 100000.',
+    cases: [
+      { input: '5\n1 2 3 4 5\n', expected: '5 4 3 2 1' },
+      { input: '1\n7\n', expected: '7' },
+      { input: '4\n-1 0 3 8\n', expected: '8 3 0 -1' },
+    ],
+  },
+  'dsa::0::3': {
+    title: 'Rotate an array by k positions',
+    sampleInput: '5\n1 2 3 4 5\n2\n',
+    statement: 'Rotate the array right by k positions.',
+    inputFormat: 'Line 1: n. Line 2: n integers. Line 3: k.',
+    outputFormat: 'Print the rotated array separated by spaces.',
+    constraints: '1 ≤ n ≤ 100000; k ≥ 0.',
+    cases: [
+      { input: '5\n1 2 3 4 5\n2\n', expected: '4 5 1 2 3' },
+      { input: '3\n1 2 3\n0\n', expected: '1 2 3' },
+      { input: '4\n1 2 3 4\n6\n', expected: '3 4 1 2' },
+    ],
+  },
+  'dsa::0::4': {
+    title: 'Remove duplicates from a sorted array',
+    sampleInput: '6\n1 1 2 2 2 3\n',
+    statement: 'Given a sorted array, print each distinct value once, preserving order.',
+    inputFormat: 'First line: n. Second line: n sorted integers.',
+    outputFormat: 'Print unique values separated by spaces.',
+    constraints: '1 ≤ n ≤ 100000; input is sorted in non-decreasing order.',
+    cases: [
+      { input: '6\n1 1 2 2 2 3\n', expected: '1 2 3' },
+      { input: '4\n5 5 5 5\n', expected: '5' },
+      { input: '5\n-2 -2 0 1 1\n', expected: '-2 0 1' },
+    ],
+  },
+  'dsa::0::5': {
+    title: 'Move all zeroes to the end',
+    sampleInput: '6\n0 1 0 3 12 0\n',
+    statement: 'Move every zero to the end while preserving the relative order of non-zero elements.',
+    inputFormat: 'First line: n. Second line: n integers.',
+    outputFormat: 'Print the resulting array separated by spaces.',
+    constraints: '1 ≤ n ≤ 100000.',
+    cases: [
+      { input: '6\n0 1 0 3 12 0\n', expected: '1 3 12 0 0 0' },
+      { input: '3\n1 2 3\n', expected: '1 2 3' },
+      { input: '4\n0 0 0 0\n', expected: '0 0 0 0' },
+    ],
+  },
+  'dsa::0::6': {
+    title: 'Find the second-largest distinct value',
+    sampleInput: '5\n4 7 2 9 7\n',
+    statement: 'Print the second-largest distinct number. If it does not exist, print -1.',
+    inputFormat: 'First line: n. Second line: n integers.',
+    outputFormat: 'Print the second-largest distinct value, or -1.',
+    constraints: '1 ≤ n ≤ 100000.',
+    cases: [
+      { input: '5\n4 7 2 9 7\n', expected: '7' },
+      { input: '3\n5 5 5\n', expected: '-1' },
+      { input: '4\n-4 -1 -2 -3\n', expected: '-2' },
+    ],
+  },
+  'dsa::0::7': {
+    title: 'Check whether a string is a palindrome',
+    sampleInput: 'racecar\n',
+    statement: 'Print true if the input line reads the same forwards and backwards; otherwise print false.',
+    inputFormat: 'One line containing the string.',
+    outputFormat: 'Print true or false.',
+    constraints: '1 ≤ string length ≤ 100000; comparison is case-sensitive.',
+    cases: [
+      { input: 'racecar\n', expected: 'true' },
+      { input: 'hello\n', expected: 'false' },
+      { input: 'abba\n', expected: 'true' },
+    ],
+  },
+  'dsa::0::8': {
+    title: 'Count character frequencies',
+    sampleInput: 'banana\n',
+    statement: 'Count each character and print characters in ascending character order, one per line as character and count.',
+    inputFormat: 'One line containing the string.',
+    outputFormat: 'One character-count pair per line, sorted by character.',
+    constraints: '1 ≤ string length ≤ 100000; input contains no whitespace.',
+    cases: [
+      { input: 'banana\n', expected: 'a 3\nb 1\nn 2' },
+      { input: 'abc\n', expected: 'a 1\nb 1\nc 1' },
+      { input: 'zzza\n', expected: 'a 1\nz 3' },
+    ],
+  },
+  'dsa::0::9': {
+    title: 'Find the longest common prefix',
+    sampleInput: '3\nflower\nflow\nflight\n',
+    statement: 'Given n strings, print their longest common prefix. Print - if no common prefix exists.',
+    inputFormat: 'First line: n. Then n strings, one per line.',
+    outputFormat: 'Print the longest common prefix, or - if it is empty.',
+    constraints: '1 ≤ n ≤ 1000; each string length ≤ 1000.',
+    cases: [
+      { input: '3\nflower\nflow\nflight\n', expected: 'fl' },
+      { input: '3\ndog\nracecar\ncar\n', expected: '-' },
+      { input: '2\ninterview\nintermediate\n', expected: 'inter' },
+    ],
+  },
 };
 
 app.get('/api/learning-problems/:pathId/:moduleIndex/:problemIndex', requireAuth, (req, res) => {
   const key = `${req.params.pathId}::${req.params.moduleIndex}::${req.params.problemIndex}`;
   const item = learningProblemCases[key];
-  if (!item) return res.status(404).json({ message: 'This learning problem has not yet been configured with official test cases.' });
+
+  if (!item) {
+    return res.status(404).json({
+      message: 'This learning problem has not yet been configured with official test cases.',
+    });
+  }
+
   const { cases, ...publicProblem } = item;
   return res.json(publicProblem);
 });
@@ -1115,55 +1414,171 @@ app.post('/api/learning-submissions', requireAuth, async (req, res) => {
   const { pathId, moduleIndex, problemIndex, language, sourceCode, mode } = req.body || {};
   const key = `${pathId}::${moduleIndex}::${problemIndex}`;
   const problem = learningProblemCases[key];
-  if (!problem) return res.status(404).json({ status: 'Not configured', message: 'Official test cases are not configured for this problem yet; it cannot be marked solved.' });
-  if (!judgeLanguageIds[language]) return res.status(400).json({ message: 'Choose a supported language: JavaScript, Python, Java, C, or C++.' });
-  if (typeof sourceCode !== 'string' || !sourceCode.trim() || sourceCode.length > 50000) return res.status(400).json({ message: 'Source code must contain 1 to 50,000 characters.' });
-  if (!['run', 'submit'].includes(mode)) return res.status(400).json({ message: 'Mode must be run or submit.' });
-  const baseUrl = process.env.JUDGE0_API_URL ? process.env.JUDGE0_API_URL.replace(/\/+$/, '') : null;
-  if (!baseUrl) return res.status(503).json({ message: 'Judge0 is not configured. Set JUDGE0_API_URL in server/.env.' });
+
+  if (!problem) {
+    return res.status(404).json({
+      status: 'Not configured',
+      message: 'Official test cases are not configured for this problem yet; it cannot be marked solved.',
+    });
+  }
+
+  if (!judgeLanguageIds[language]) {
+    return res.status(400).json({
+      message: 'Choose a supported language: JavaScript, Python, Java, C, or C++.',
+    });
+  }
+
+  if (typeof sourceCode !== 'string' || !sourceCode.trim() || sourceCode.length > 50000) {
+    return res.status(400).json({
+      message: 'Source code must contain 1 to 50,000 characters.',
+    });
+  }
+
+  if (!['run', 'submit'].includes(mode)) {
+    return res.status(400).json({ message: 'Mode must be run or submit.' });
+  }
+
+  const baseUrl = process.env.JUDGE0_API_URL
+    ? process.env.JUDGE0_API_URL.replace(/\/+$/, '')
+    : null;
+
+  if (!baseUrl) {
+    return res.status(503).json({
+      message: 'Judge0 is not configured. Set JUDGE0_API_URL in server/.env.',
+    });
+  }
+
   const headers = { 'Content-Type': 'application/json' };
+
   if (process.env.JUDGE0_API_KEY) headers['X-RapidAPI-Key'] = process.env.JUDGE0_API_KEY;
   if (process.env.JUDGE0_API_HOST) headers['X-RapidAPI-Host'] = process.env.JUDGE0_API_HOST;
   if (process.env.JUDGE0_AUTH_TOKEN) headers['X-Auth-Token'] = process.env.JUDGE0_AUTH_TOKEN;
-  const timeoutMs = Math.min(120000, Math.max(1000, Number(process.env.JUDGE0_TIMEOUT_MS || 30000)));
+
+  const timeoutMs = Math.min(
+    120000,
+    Math.max(1000, Number(process.env.JUDGE0_TIMEOUT_MS || 30000))
+  );
+
   async function judge(input) {
     const call = async (url, options) => {
-      const response = await fetch(url, { ...options, headers, signal: AbortSignal.timeout(timeoutMs) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Judge0 request failed.');
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+
+      const body = await response.text();
+      let data = {};
+
+      try {
+        data = body.trim() ? JSON.parse(body) : {};
+      } catch {
+        throw new Error('Judge0 returned an invalid response.');
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Judge0 request failed.');
+      }
+
       return data;
     };
-    let result = await call(`${baseUrl}/submissions?base64_encoded=false`, { method: 'POST', body: JSON.stringify({ source_code: sourceCode, language_id: judgeLanguageIds[language], stdin: input }) });
+
+    let result = await call(
+      `${baseUrl}/submissions?base64_encoded=false`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          source_code: sourceCode,
+          language_id: judgeLanguageIds[language],
+          stdin: input,
+        }),
+      }
+    );
+
     if (result.token) {
       const deadline = Date.now() + timeoutMs;
+
       while (!result.status || result.status.id === 1 || result.status.id === 2) {
         if (Date.now() > deadline) throw new Error('Judge0 execution timed out.');
-        await new Promise(resolve => setTimeout(resolve, Number(process.env.JUDGE0_POLL_INTERVAL_MS || 750)));
-        result = await call(`${baseUrl}/submissions/${encodeURIComponent(result.token)}?base64_encoded=false`, { method: 'GET' });
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, Number(process.env.JUDGE0_POLL_INTERVAL_MS || 750))
+        );
+
+        result = await call(
+          `${baseUrl}/submissions/${encodeURIComponent(result.token)}?base64_encoded=false`,
+          { method: 'GET' }
+        );
       }
     }
-    return { status: result.status?.description || 'Execution error', statusId: result.status?.id, stdout: result.stdout || '', stderr: result.stderr || '', compileOutput: result.compile_output || '', time: result.time || null };
+
+    return {
+      status: result.status?.description || 'Execution error',
+      statusId: result.status?.id,
+      stdout: result.stdout || '',
+      stderr: result.stderr || '',
+      compileOutput: result.compile_output || '',
+      time: result.time || null,
+    };
   }
+
   try {
     if (mode === 'run') {
       const result = await judge(problem.sampleInput);
-      return res.json({ status: result.statusId === 3 ? 'Run complete' : result.status, message: result.stdout || result.stderr || result.compileOutput || 'No output.', results: [result], passed: 0, total: 0 });
+
+      return res.json({
+        status: result.statusId === 3 ? 'Run complete' : result.status,
+        message: result.stdout || result.stderr || result.compileOutput || 'No output.',
+        results: [result],
+        passed: 0,
+        total: 0,
+      });
     }
+
     const results = [];
+
     for (const testCase of problem.cases) {
       const result = await judge(testCase.input);
-      const normalizedActual = result.stdout.trim().replace(/\s+/g, ' ');
-      const normalizedExpected = testCase.expected.trim().replace(/\s+/g, ' ');
-      const passed = result.statusId === 3 && normalizedActual === normalizedExpected;
-      results.push({ status: passed ? 'Accepted' : result.statusId === 3 ? 'Wrong Answer' : result.status, passed, stdout: result.stdout, stderr: result.stderr, compileOutput: result.compileOutput, time: result.time });
+
+      const actual = result.stdout.trim().replace(/\s+/g, ' ');
+      const expected = testCase.expected.trim().replace(/\s+/g, ' ');
+      const passed = result.statusId === 3 && actual === expected;
+
+      results.push({
+        status: passed
+          ? 'Accepted'
+          : result.statusId === 3
+            ? 'Wrong Answer'
+            : result.status,
+        passed,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        compileOutput: result.compileOutput,
+        time: result.time,
+      });
+
       if (!passed) break;
     }
-    const passed = results.filter(result => result.passed).length;
+
+    const passed = results.filter((result) => result.passed).length;
     const accepted = passed === problem.cases.length;
-    return res.json({ status: accepted ? 'Accepted' : results[results.length - 1]?.status || 'Wrong Answer', message: accepted ? 'All official test cases passed. Problem solved!' : `${passed}/${problem.cases.length} test cases passed.`, passed, total: problem.cases.length, results, problemKey: key });
+
+    return res.json({
+      status: accepted ? 'Accepted' : results[results.length - 1]?.status || 'Wrong Answer',
+      message: accepted
+        ? 'All official test cases passed. Problem solved!'
+        : `${passed}/${problem.cases.length} test cases passed.`,
+      passed,
+      total: problem.cases.length,
+      results,
+      problemKey: key,
+    });
   } catch (error) {
     console.error('Learning Path Judge0 error:', error.message);
-    return res.status(502).json({ message: 'Could not execute the submission. Check Judge0 configuration and server logs.' });
+
+    return res.status(502).json({
+      message: 'Could not execute the submission. Check Judge0 configuration and server logs.',
+    });
   }
 });
 
@@ -1171,56 +1586,92 @@ app.use('/api/users', requireAuth, requireAdmin);
 
 app.get('/api/users', async (_req, res) => {
   try {
-    const users = await listUsers();
-    res.json(users);
+    return res.json(await listUsers());
   } catch (error) {
-    res.status(500).json({ message: error.message || 'Failed to fetch users' });
+    return res.status(500).json({
+      message: error.message || 'Failed to fetch users',
+    });
   }
 });
 
 app.post('/api/users', async (req, res) => {
   try {
     const user = await createUser(req.body || {});
-    res.status(201).json(user);
+    return res.status(201).json(user);
   } catch (error) {
-    res.status(400).json({ message: error.message || 'Unable to create user' });
+    return res.status(400).json({
+      message: error.message || 'Unable to create user',
+    });
   }
 });
 
 app.put('/api/users/:id', async (req, res) => {
   try {
     const user = await updateUser(req.params.id, req.body || {});
-    res.json(user);
+    return res.json(user);
   } catch (error) {
     const statusCode = error.message === 'User not found' ? 404 : 400;
-    res.status(statusCode).json({ message: error.message || 'Unable to update user' });
+
+    return res.status(statusCode).json({
+      message: error.message || 'Unable to update user',
+    });
   }
 });
 
 app.delete('/api/users/:id', async (req, res) => {
   try {
     await deleteUser(req.params.id);
-    res.status(204).send();
+    return res.status(204).send();
   } catch (error) {
     const statusCode = error.message === 'User not found' ? 404 : 400;
-    res.status(statusCode).json({ message: error.message || 'Unable to delete user' });
+
+    return res.status(statusCode).json({
+      message: error.message || 'Unable to delete user',
+    });
   }
 });
 
 if (fs.existsSync(clientDistPath)) {
   app.use(express.static(clientDistPath));
+
   app.use((req, res, next) => {
-    if (req.path.startsWith('/api/')) {
-      return next();
-    }
-    res.sendFile(path.join(clientDistPath, 'index.html'));
+    if (req.path.startsWith('/api/')) return next();
+
+    return res.sendFile(path.join(clientDistPath, 'index.html'));
   });
 }
 
 app.get('/', (_req, res) => {
-  res.json({
+  return res.json({
     app: 'Qodriva API',
     endpoints: ['/api/health', '/api/users'],
+  });
+});
+
+// Return JSON for unknown API routes rather than an HTML/empty response.
+app.use('/api', (req, res) => {
+  return res.status(404).json({
+    message: `API endpoint not found: ${req.method} ${req.originalUrl}`,
+  });
+});
+
+// Handle malformed JSON and unexpected Express errors consistently.
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+
+  if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
+    return res.status(400).json({
+      message: 'The request body contains invalid JSON.',
+    });
+  }
+
+  console.error('Unhandled API error:', error);
+
+  return res.status(error.status || 500).json({
+    message:
+      process.env.NODE_ENV === 'production'
+        ? 'An unexpected server error occurred.'
+        : error.message || 'An unexpected server error occurred.',
   });
 });
 
@@ -1228,7 +1679,9 @@ async function startServer() {
   if (!JWT_SECRET) {
     throw new Error('JWT_SECRET must be set when NODE_ENV=production.');
   }
+
   await initializeDatabase();
+
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
@@ -1241,4 +1694,11 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, initializeDatabase, listUsers, createUser, updateUser, deleteUser };
+module.exports = {
+  app,
+  initializeDatabase,
+  listUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+};

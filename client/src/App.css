@@ -3769,3 +3769,435 @@ body {
 .solution-panel > p { color:#bbc6df; line-height:1.7; }
 .solution-panel h4 { margin-bottom:8px; }
 @media(max-width:850px){.lesson-content-grid{grid-template-columns:1fr}.lesson-sidebar-card{order:-1}.learning-lesson-row{align-items:flex-start;flex-direction:column}.problem-title-row{align-items:flex-start}}
+/* Qodriva dashboard button polish */
+.qodriva-hero .qh-button--primary,
+.qodriva-hero .qh-button--secondary {
+  border-radius: 12px;
+  font-weight: 700;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.qodriva-hero .qh-button--primary {
+  color: #06111c;
+  background: linear-gradient(135deg, #67e8f9, #38bdf8);
+  border: 1px solid rgba(103, 232, 249, 0.65);
+  box-shadow: 0 8px 24px rgba(56, 189, 248, 0.2);
+}
+
+.qodriva-hero .qh-button--secondary {
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.qodriva-hero .qh-button--primary:hover,
+.qodriva-hero .qh-button--secondary:hover {
+  transform: translateY(-2px);
+}
+
+.qodriva-hero .qh-button--primary:hover {
+  box-shadow: 0 12px 32px rgba(56, 189, 248, 0.35);
+}
+/* Qodriva — clean, minimal dashboard */
+
+:root {
+  --q-bg: #080d16;
+  --q-panel: #101827;
+  --q-border: #263449;
+  --q-text: #edf3ff;
+  --q-muted: #9aaac2;
+  --q-accent: #55d9f5;
+}
+
+html {
+  scroll-behavior: auto;
+}
+
+body {
+  background: var(--q-bg);
+  color: var(--q-text);
+  font-family: Inter, "Segoe UI", sans-serif;
+}
+
+/* Stop decorative motion */
+*,
+*::before,
+*::after {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0.15s !important;
+  scroll-behavior: auto !important;
+}
+
+/* Consistent buttons */
+button,
+.qh-button--primary,
+.qh-button--secondary {
+  border: 1px solid var(--q-border);
+  border-radius: 9px;
+  padding: 10px 16px;
+  background: var(--q-panel);
+  color: var(--q-text);
+  font: inherit;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+
+button:hover,
+.qh-button--secondary:hover {
+  background: #19263a;
+  border-color: #47617d;
+}
+
+.qh-button--primary {
+  background: var(--q-accent);
+  color: #07111b;
+  border-color: var(--q-accent);
+  font-weight: 650;
+}
+
+.qh-button--primary:hover {
+  background: #8ae8fa;
+}
+
+/* Remove default link appearance */
+a {
+  color: var(--q-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Avoid horizontal overflow */
+img,
+video,
+canvas {
+  max-width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ===== QODRIVA DASHBOARD LAYOUT FIX ===== */
+
+.main-area {
+  min-width: 0;
+}
+
+.main-area > * {
+  box-sizing: border-box;
+}
+
+.welcome-row,
+.section-heading,
+.progress-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.welcome-row {
+  margin: 24px 0 30px;
+}
+
+.welcome-row h1,
+.section-heading h1,
+.section-heading h2,
+.progress-title h2 {
+  margin: 0 0 10px;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+}
+
+.subheading,
+.section-heading p,
+.progress-title p {
+  color: #9baac0;
+  line-height: 1.7;
+}
+
+/* Statistics: equal-sized cards */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 24px 0 36px;
+}
+
+.stat-card {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid #253247;
+  border-radius: 14px;
+  background: #101827;
+  overflow-wrap: anywhere;
+}
+
+.stat-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #a8b6cb;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+}
+
+.stat-value {
+  margin: 20px 0 12px;
+  color: #f1f5ff;
+  font-size: clamp(25px, 2.5vw, 36px);
+  font-weight: 750;
+  line-height: 1.15;
+}
+
+.stat-value span,
+.stat-card small {
+  color: #9baac0;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.stat-card small {
+  display: block;
+  line-height: 1.6;
+}
+
+/* Section spacing */
+.problems-section,
+.progress-panel {
+  margin: 32px 0;
+}
+
+.section-heading {
+  margin-bottom: 22px;
+}
+
+.section-heading > div,
+.progress-title > div {
+  min-width: 0;
+}
+
+/* Challenge list: no overlapping titles or metadata */
+.problem-table {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #253247;
+  border-radius: 14px;
+  background: #0e1624;
+}
+
+.table-header,
+.problem-row {
+  display: grid;
+  grid-template-columns: 72px minmax(220px, 2fr) 110px 120px minmax(120px, 1fr) 32px;
+  align-items: center;
+  gap: 16px;
+  min-width: 760px;
+  padding: 16px 20px;
+  box-sizing: border-box;
+}
+
+.table-header {
+  color: #8fa1bb;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  border-bottom: 1px solid #253247;
+}
+
+.problem-row {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #202d40;
+  border-radius: 0;
+  background: transparent;
+  color: #edf3ff;
+  text-align: left;
+  box-shadow: none;
+}
+
+.problem-row:last-child {
+  border-bottom: 0;
+}
+
+.problem-row:hover {
+  background: #152136;
+}
+
+/* Daily challenge and progress cards */
+.daily-button,
+.progress-panel {
+  border: 1px solid #253247;
+  border-radius: 14px;
+  background: #101827;
+}
+
+.daily-button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 100%;
+  padding: 16px;
+  text-align: left;
+}
+
+.daily-button > div {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.daily-button strong {
+  overflow-wrap: anywhere;
+}
+
+.daily-button small {
+  color: #9baac0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.progress-panel {
+  padding: 24px;
+}
+
+.progress-title {
+  margin-bottom: 24px;
+}
+
+.difficulty-progress {
+  display: grid;
+  gap: 18px;
+}
+
+.difficulty-progress-row {
+  display: grid;
+  grid-template-columns: 90px minmax(60px, 1fr) 50px;
+  align-items: center;
+  gap: 14px;
+}
+
+.stat-progress {
+  overflow: hidden;
+  height: 7px;
+  border-radius: 20px;
+  background: #263449;
+}
+
+.stat-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #55d9f5;
+}
+
+/* Sidebar text should never run together */
+.side-nav {
+  display: grid;
+  gap: 6px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 13px 16px;
+  border-radius: 9px;
+  text-align: left;
+}
+
+.nav-count {
+  margin-left: auto;
+}
+
+.streak-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+}
+
+.streak-card > div,
+.profile-mini > span:nth-child(2) {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.streak-card strong,
+.profile-mini strong {
+  overflow-wrap: anywhere;
+}
+
+.streak-card small,
+.profile-mini small {
+  color: #9baac0;
+  line-height: 1.5;
+}
+
+/* Consistent text fields */
+input,
+select,
+textarea {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #55d9f5;
+  outline-offset: 3px;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .welcome-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 650px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-heading,
+  .progress-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .progress-panel {
+    padding: 16px;
+  }
+
+  .difficulty-progress-row {
+    grid-template-columns: 70px minmax(40px, 1fr) 42px;
+    gap: 9px;
+  }
+}

@@ -115,3 +115,9 @@
 .qle-problem-page .qle-content-card h3{margin-top:24px}
 .qle-problem-page .qle-complete-button:disabled{opacity:.8;cursor:default}
 @media(max-width:1000px){.qle-problem-detail-grid{grid-template-columns:1fr}.qle-problem-detail-grid .qle-lesson-sidebar{position:static}}
+
+
+/* Run and submit controls */
+.qle-run-actions { display: flex; flex-wrap: wrap; gap: 0.65rem; align-items: center; }
+.qle-run-actions button:disabled { opacity: 0.6; cursor: wait; }
+@media (max-width: 640px) { .qle-run-row { align-items: flex-start; flex-direction: column; gap: 0.75rem; } .qle-run-actions { width: 100%; } }

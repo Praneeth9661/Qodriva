@@ -1,119 +1,13 @@
-/* Qodriva Learning Experience */
-.qle-root{color:#edf0ff;max-width:1500px;margin:0 auto;padding:26px 28px 64px;font-family:inherit}
-.qle-root *{box-sizing:border-box}
-.qle-page-header{margin:0 auto 24px;max-width:1100px}
-.qle-eyebrow{display:inline-block;color:#7ce9f4;font-size:.72rem;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
-.qle-page-header h1,.qle-lesson-heading h1{font-size:clamp(2rem,3vw,3.25rem);line-height:1.08;letter-spacing:-.04em;margin:12px 0;color:#f4f5ff}
-.qle-page-header h1 span{background:linear-gradient(90deg,#65e9f4,#9b8cff);background-clip:text;-webkit-background-clip:text;color:transparent}
-.qle-page-header p,.qle-lesson-heading>p{color:#aeb8d4;line-height:1.75;max-width:800px;margin:0}
-.qle-progress-card,.qle-path-card,.qle-content-card,.qle-lesson-sidebar{background:linear-gradient(145deg,rgba(26,31,50,.98),rgba(16,20,34,.98));border:1px solid #303850;border-radius:22px;box-shadow:0 18px 55px rgba(0,0,0,.13)}
-.qle-progress-card{padding:22px 26px;margin-bottom:24px;display:grid;grid-template-columns:1fr;gap:16px}
-.qle-progress-card h2{margin:7px 0 0;font-size:1.25rem}
-.qle-progress-track,.qle-mini-progress{height:8px;border-radius:999px;background:#343b51;overflow:hidden}
-.qle-progress-track span,.qle-mini-progress span{display:block;height:100%;background:linear-gradient(90deg,#55e7f0,#9b8cff);border-radius:inherit;transition:width .25s}
-.qle-path-controls{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:0 0 20px}
-.qle-search-box{display:flex;align-items:center;gap:10px;min-width:min(100%,330px);padding:0 14px;background:#141a2b;border:1px solid #303850;border-radius:12px;color:#7ce9f4}
-.qle-search-box input{width:100%;min-height:44px;background:transparent;border:0;outline:0;color:#f5f6ff;font:inherit}
-.qle-filter-row{display:flex;gap:8px;flex-wrap:wrap}
-.qle-filter-row button,.qle-ghost-button,.qle-outline-button{border:1px solid #37405b;background:#171d30;color:#c8d0e7;border-radius:10px;padding:10px 13px;font:inherit;cursor:pointer;transition:.18s}
-.qle-filter-row button.is-active,.qle-filter-row button:hover,.qle-ghost-button:hover,.qle-outline-button:hover{border-color:#5edce9;color:#78edf5;background:#1d2c40}
-.qle-path-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
-.qle-path-card{padding:22px;display:flex;flex-direction:column;min-width:0;transition:transform .2s,border-color .2s}
-.qle-path-card:hover{transform:translateY(-3px);border-color:#4c7189}
-.qle-path-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.qle-path-tag,.qle-path-progress,.qle-problem-count{background:#202d43;border:1px solid #34465f;color:#7ce9f4;border-radius:10px;padding:7px 10px;font-size:.78rem;font-weight:800}
-.qle-path-progress{color:#b9c4df}
-.qle-path-card h2{font-size:1.25rem;line-height:1.25;margin:18px 0 9px}
-.qle-path-card>p{color:#aeb8d4;line-height:1.65;min-height:72px;margin:0 0 17px}
-.qle-mini-progress{height:5px;margin-bottom:17px}
-.qle-module-preview{display:flex;flex-direction:column;gap:8px;color:#c2cbe2;font-size:.88rem;margin-bottom:18px;min-height:112px}
-.qle-module-preview span:before{content:'›';color:#64e7f1;margin-right:8px}
-.qle-module-preview small{color:#7f8cae;padding-left:12px}
-.qle-primary-button{border:1px solid transparent;background:linear-gradient(100deg,#67e8f1,#a29aff);color:#101626;border-radius:11px;padding:12px 17px;font:inherit;font-weight:800;cursor:pointer;transition:filter .2s,transform .2s}
-.qle-primary-button:hover{filter:brightness(1.07);transform:translateY(-1px)}
-.qle-primary-button:disabled,.qle-outline-button:disabled{opacity:.4;cursor:not-allowed;transform:none}
-.qle-open-path{width:100%;display:flex;align-items:center;justify-content:space-between}
-.qle-topic-picker{display:flex;flex-direction:column;gap:7px;margin-top:14px;color:#8995b5;font-size:.8rem}
-.qle-topic-picker select,.qle-language-select select{background:#0c1220;color:#e8edff;border:1px solid #39435c;border-radius:9px;padding:10px;font:inherit;max-width:100%}
-.qle-empty-state,.qle-learning-note{margin-top:22px;padding:18px;border:1px solid #303850;border-radius:14px;color:#aeb8d4;background:#151a2b}
-.qle-learning-note strong{color:#7ce9f4}
-.qle-lesson-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px;color:#aeb8d4;font-size:.9rem}
-.qle-lesson-topbar b{color:#697795;padding:0 7px}
-.qle-lesson-heading{padding:0 0 24px}
-.qle-lesson-heading h1{margin-top:10px}
-.qle-lesson-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
-.qle-lesson-meta span{font-size:.82rem;color:#b8c5df;border:1px solid #303850;background:#151b2c;border-radius:999px;padding:7px 11px}
-.qle-lesson-layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;align-items:start;gap:22px}
-.qle-lesson-main{min-width:0;display:flex;flex-direction:column;gap:20px}
-.qle-content-card{padding:24px;min-width:0}
-.qle-content-card h2{font-size:1.35rem;margin:0 0 14px}
-.qle-content-card p{color:#b4bfd9;line-height:1.7}
-.qle-points{display:grid;gap:10px;padding-left:22px;color:#c9d2e9;line-height:1.65;margin:0 0 24px}
-.qle-points li::marker{color:#6ee9f1}
-.qle-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:22px 0 12px}
-.qle-section-heading>div{display:flex;align-items:center;gap:11px}
-.qle-section-heading h2{margin:0;font-size:1.15rem}
-.qle-step{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#203047;color:#7ce9f4;font-size:.78rem;font-weight:800}
-.qle-code,.qle-console pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#080d18;border:1px solid #29334a;border-radius:14px;color:#d8e5ff;padding:18px;line-height:1.7;font:500 .91rem/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;overflow:auto}
-.qle-output{margin-top:14px;border:1px solid #24534f;background:#102424;border-radius:14px;padding:15px}
-.qle-output>span{font-size:.72rem;letter-spacing:.12em;font-weight:800;color:#70e6bd}
-.qle-output pre{white-space:pre-wrap;color:#d9f6ec;margin:10px 0 0;font:500 .9rem/1.6 ui-monospace,SFMono-Regular,Consolas,monospace}
-.qle-exercise{border-top:1px solid #303850;margin-top:24px;padding-top:22px}
-.qle-exercise h2{margin:8px 0}
-.qle-solution-panel{margin-top:16px;padding:16px;background:#111a2a;border:1px solid #34435b;border-radius:13px}
-.qle-solution-panel h3{margin:0 0 10px}
-.qle-solution-panel .qle-code{margin:0}
-.qle-complete-row{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
-.qle-complete-button{border:1px solid #3d5d70;border-radius:11px;background:#183342;color:#8df1ed;font:inherit;font-weight:800;padding:13px 16px;cursor:pointer}
-.qle-complete-button.is-done{background:#173a31;border-color:#337a64;color:#a4f3cb}
-.qle-next-buttons{display:flex;gap:9px;flex-wrap:wrap}
-.qle-lesson-sidebar{position:sticky;top:20px;padding:20px;max-height:calc(100vh - 40px);overflow:auto}
-.qle-lesson-sidebar h2{margin:0;font-size:1.2rem}
-.qle-sidebar-caption{font-size:.8rem;color:#8f9cba;margin:7px 0 17px}
-.qle-module-row{width:100%;display:grid;grid-template-columns:34px minmax(0,1fr) 16px;align-items:center;gap:10px;text-align:left;background:#1a2031;border:1px solid #303850;border-radius:12px;padding:12px;margin-top:9px;color:#d7def2;cursor:pointer}
-.qle-module-row>span,.qle-problem-number{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:#252e46;color:#7ce9f4;font-size:.8rem;font-weight:800}
-.qle-module-row b{font-size:.88rem;font-weight:650;line-height:1.4}
-.qle-module-row i{color:#70e6bd;font-style:normal}
-.qle-module-row.is-active{border-color:#61e4ef;background:#203246}
-.qle-sidebar-stat{display:flex;align-items:center;gap:12px;margin-top:18px;padding:13px;border-radius:12px;background:#111a2a;border:1px solid #303850;color:#aeb8d4;font-size:.8rem}
-.qle-sidebar-stat strong{font-size:1.5rem;color:#7ce9f4}
-.qle-problem-heading,.qle-editor-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
-.qle-problem-heading h2,.qle-editor-header h2{margin:7px 0}
-.qle-problem-heading p,.qle-editor-header p{margin:0}
-.qle-problem-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:20px}
-.qle-problem-item{display:flex;align-items:center;gap:11px;text-align:left;min-width:0;background:#111727;border:1px solid #303850;color:#d5ddf1;border-radius:12px;padding:10px;cursor:pointer}
-.qle-problem-item:hover,.qle-problem-item.is-selected{border-color:#60e2ee;background:#1d2b40}
-.qle-problem-number{flex:0 0 30px}
-.qle-problem-title{flex:1;line-height:1.4;font-size:.88rem}
-.qle-problem-arrow{color:#7ce9f4}
-.qle-current-problem{margin-top:18px;padding:17px;border:1px solid #33415a;background:#101626;border-radius:14px}
-.qle-current-problem h3{margin:9px 0;font-size:1.15rem}
-.qle-current-problem p{margin:0}
-.qle-editor-card{padding:0;overflow:hidden}
-.qle-editor-header{padding:24px 24px 18px}
-.qle-language-select{display:flex;flex-direction:column;gap:7px;color:#96a3c2;font-size:.78rem;font-weight:700}
-.qle-editor-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;background:#111727;border-top:1px solid #303850;border-bottom:1px solid #303850}
-.qle-editor-toolbar>span{display:flex;align-items:center;gap:7px;color:#9ba8c6;font-size:.8rem}
-.qle-editor-toolbar b{margin-left:7px;color:#cfd9ef;font-weight:600}
-.qle-dot{display:inline-block;width:9px;height:9px;border-radius:50%}
-.qle-dot-red{background:#ff6b78}.qle-dot-yellow{background:#ffd166}.qle-dot-green{background:#6ce6b2}
-.qle-code-editor{display:block;width:100%;min-height:420px;resize:vertical;background:#080d18;color:#e3ecff;border:0;border-bottom:1px solid #303850;outline:0;padding:22px;font:500 .93rem/1.75 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:2;white-space:pre;overflow:auto}
-.qle-code-editor:focus{box-shadow:inset 0 0 0 1px #5ce2ee}
-.qle-run-row{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:15px 20px;color:#8795b5;font-size:.8rem;background:#111727}
-.qle-console{margin:0 20px 18px;border:1px solid #303850;border-radius:12px;overflow:hidden;background:#080d18}
-.qle-console-heading{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#151b2b;border-bottom:1px solid #303850;color:#7ce9f4;font-size:.72rem;letter-spacing:.1em;font-weight:800}
-.qle-console .qle-ghost-button{font-size:.78rem;padding:6px 9px}
-.qle-console pre{margin:0;border:0;border-radius:0;min-height:64px;color:#c9d9f5}
-.qle-run-note{padding:0 20px 18px;margin:0;font-size:.8rem;color:#8996b5!important}
-@media(max-width:1100px){.qle-path-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.qle-lesson-layout{grid-template-columns:minmax(0,1fr) 270px}.qle-content-card{padding:20px}}
-@media(max-width:780px){.qle-root{padding:18px 14px 42px}.qle-path-grid{grid-template-columns:1fr}.qle-lesson-layout{grid-template-columns:1fr}.qle-lesson-sidebar{position:static;max-height:none;order:-1}.qle-problem-list{grid-template-columns:1fr}.qle-code-editor{min-height:340px}.qle-page-header p{font-size:.95rem}.qle-complete-row{align-items:stretch}.qle-next-buttons{width:100%}.qle-next-buttons>*{flex:1}}
-
-/* Problem solving page and automatic completion status */
-.qle-problem-detail-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
-.qle-topic-status{padding:15px 18px;border:1px solid #35546a;background:#142a35;color:#7ce9f4;border-radius:14px;font-weight:800}
-.qle-problem-page .qle-content-card p{color:#bac5df;line-height:1.75}
-.qle-problem-page .qle-content-card h3{margin-top:24px}
-.qle-problem-page .qle-complete-button:disabled{opacity:.8;cursor:default}
-@media(max-width:1000px){.qle-problem-detail-grid{grid-template-columns:1fr}.qle-problem-detail-grid .qle-lesson-sidebar{position:static}}
-
-.qle-action-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.qle-primary-button:disabled{opacity:.45;cursor:not-allowed}.qle-problem-page .qle-content-card p{white-space:pre-wrap}.qle-run-note{color:#8ea4cf;line-height:1.65}
+.qac-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;perspective:1100px}
+.qac-card{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-height:245px;text-align:left;padding:24px;border:1px solid #303650;border-radius:23px;background:linear-gradient(145deg,#1b2034,#111522);color:#edf0ff;box-shadow:9px 9px 20px rgba(0,0,0,.25),-5px -5px 14px rgba(255,255,255,.018);cursor:pointer;transform-style:preserve-3d;transition:transform .28s cubic-bezier(.2,.75,.25,1),border-color .25s,box-shadow .25s;animation:qac-in .45s both;animation-delay:calc(var(--qac-index)*55ms)}
+@keyframes qac-in{from{opacity:0;transform:translateY(16px) rotateX(3deg)}to{opacity:1;transform:translateY(0) rotateX(0)}}
+.qac-card:hover,.qac-card:focus-visible{transform:translateY(-9px) translateZ(18px) rotateX(2deg) rotateY(-1deg) scale(1.015);border-color:#5a61a0;box-shadow:14px 20px 30px rgba(0,0,0,.35),0 0 24px rgba(99,216,235,.09);outline:none}
+.qac-card:active{transform:translateY(-3px) scale(.99)}
+.qac-icon{display:grid;place-items:center;width:48px;height:48px;border-radius:15px;background:linear-gradient(145deg,#242a48,#151a2b);color:#68e5ef;font-size:23px;box-shadow:5px 5px 12px rgba(0,0,0,.25),-4px -4px 10px rgba(255,255,255,.025);transition:transform .25s}
+.qac-card:hover .qac-icon{transform:translateZ(24px) rotate(-5deg)}
+.qac-title{margin-top:19px;font-size:18px;font-weight:800;font-family:'Space Grotesk',sans-serif}
+.qac-description{margin-top:10px;color:#b0bcdf;line-height:1.7;font-size:14px}
+.qac-action{display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:auto;padding-top:18px;color:#77e7ed;font-size:12px;font-weight:800;opacity:.0;transform:translateY(5px);transition:opacity .2s,transform .2s}
+.qac-card:hover .qac-action,.qac-card:focus-visible .qac-action{opacity:1;transform:translateY(0)}
+@media(max-width:1050px){.qac-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.qac-grid{grid-template-columns:1fr}.qac-card{min-height:190px}.qac-action{opacity:1;transform:none}}

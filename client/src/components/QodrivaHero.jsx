@@ -1,6 +1,9 @@
 
 import React from "react";
 import "./QodrivaHero.css";
+import QodrivaGlobe from "./QodrivaGlobe";
+
+const bars = [30, 42, 36, 51, 57, 54, 70, 60, 80, 74, 91, 100];
 
 export default function QodrivaHero() {
   return (
@@ -13,7 +16,7 @@ export default function QodrivaHero() {
       <div className="qh-glow qh-glow--one" aria-hidden="true" />
       <div className="qh-glow qh-glow--two" aria-hidden="true" />
 
-      {/* Hero content */}
+      {/* LEFT: original content preserved */}
       <div className="qh-content">
         <div className="qh-eyebrow">
           <span className="qh-status-dot" />
@@ -31,17 +34,11 @@ export default function QodrivaHero() {
         </p>
 
         <div className="qh-actions">
-          <a
-            className="qh-button qh-button--primary"
-            href="#problems"
-          >
+          <a className="qh-button qh-button--primary" href="#problems">
             Start coding <span aria-hidden="true">↗</span>
           </a>
 
-          <a
-            className="qh-button qh-button--secondary"
-            href="#features"
-          >
+          <a className="qh-button qh-button--secondary" href="#features">
             Explore platform
           </a>
         </div>
@@ -56,82 +53,17 @@ export default function QodrivaHero() {
         </div>
       </div>
 
-      {/* CSS 3D animation scene */}
+      {/* RIGHT: real 3D globe and original floating cards */}
       <div
         className="qh-scene"
-        aria-label="Animated CSS 3D illustrations"
+        aria-label="Animated Qodriva coding planet"
       >
-        {/* Holographic orb */}
-        <div className="qh-orb-wrap" aria-hidden="true">
-          <div className="qh-orb-halo" />
-
-          <div className="qh-orb">
-            <div className="qh-orb-shine" />
-
-            <div className="qh-orb-latitude qh-orb-latitude--one" />
-            <div className="qh-orb-latitude qh-orb-latitude--two" />
-
-            <div className="qh-orb-longitude qh-orb-longitude--one" />
-            <div className="qh-orb-longitude qh-orb-longitude--two" />
-
-            <div className="qh-orb-core" />
-          </div>
-
-          <div className="qh-orb-caption">
-            <i />
-            QODRIVA CORE
-          </div>
+        {/* Real Three.js globe replaces the old CSS planet */}
+        <div className="qh-planet-stage" aria-hidden="true">
+          <QodrivaGlobe />
         </div>
 
-        {/* Rotating 3D cube */}
-        <div className="qh-cube-position" aria-hidden="true">
-          <div className="qh-cube">
-            <div className="qh-cube-face qh-cube-face--front">
-              <span>{"{ }"}</span>
-              <small>LOGIC</small>
-            </div>
-
-            <div className="qh-cube-face qh-cube-face--back">
-              <span>01</span>
-              <small>BUILD</small>
-            </div>
-
-            <div className="qh-cube-face qh-cube-face--right">
-              <span>JS</span>
-              <small>CREATE</small>
-            </div>
-
-            <div className="qh-cube-face qh-cube-face--left">
-              <span>λ</span>
-              <small>THINK</small>
-            </div>
-
-            <div className="qh-cube-face qh-cube-face--top">
-              <span>+</span>
-            </div>
-
-            <div className="qh-cube-face qh-cube-face--bottom">
-              <span>Q</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Orbital rings */}
-        <div className="qh-orbits" aria-hidden="true">
-          <div className="qh-orbit qh-orbit--a">
-            <span />
-          </div>
-
-          <div className="qh-orbit qh-orbit--b">
-            <span />
-          </div>
-
-          <div className="qh-orbit qh-orbit--c">
-            <span />
-          </div>
-        </div>
-
-        {/* Floating code card */}
+        {/* Code card */}
         <div
           className="qh-code-card qh-code-card--left"
           aria-hidden="true"
@@ -145,26 +77,27 @@ export default function QodrivaHero() {
 
           <div className="qh-code-lines">
             <p>
-              <em>01</em>{" "}
-              <span className="qh-token-purple">function</span>{" "}
-              <span className="qh-token-blue">solve</span>() {"{"}
-            </p>
-
-            <p>
-              <em>02</em>&nbsp;&nbsp;
-              <span className="qh-token-purple">return</span>{" "}
-              <span className="qh-token-green">
-                "keep going"
+              <em>01</em>
+              <span>
+                <strong>function</strong> <b>solve</b>() {"{"}
               </span>
-              ;
             </p>
 
             <p>
-              <em>03</em> {"}"}
+              <em>02</em>
+              <span>
+                &nbsp;&nbsp;<strong>return</strong>{" "}
+                <i>"keep going"</i>;
+              </span>
             </p>
 
             <p>
-              <em>04</em>{" "}
+              <em>03</em>
+              <span>{"}"}</span>
+            </p>
+
+            <p>
+              <em>04</em>
               <span className="qh-token-muted">
                 // one more challenge
               </span>
@@ -172,13 +105,11 @@ export default function QodrivaHero() {
           </div>
 
           <div className="qh-card-footer">
-            <span />
-            PASSING TESTS
-            <b>04/04</b>
+            <span /> PASSING TESTS <b>04/04</b>
           </div>
         </div>
 
-        {/* Floating progress card */}
+        {/* Progress card */}
         <div
           className="qh-code-card qh-code-card--right"
           aria-hidden="true"
@@ -195,17 +126,17 @@ export default function QodrivaHero() {
             <strong>+28%</strong>
           </div>
 
-          {/* Fixed: valid JavaScript JSX instead of Python syntax */}
           <div className="qh-bars">
-            {Array.from({ length: 12 }, (_, i) => (
-              <i key={i} />
+            {bars.map((height, index) => (
+              <i
+                key={index}
+                style={{ "--bar-height": `${height}%` }}
+              />
             ))}
           </div>
 
           <div className="qh-card-footer">
-            <span />
-            STREAK ACTIVE
-            <b>7 DAYS</b>
+            <span /> STREAK ACTIVE <b>7 DAYS</b>
           </div>
         </div>
 
@@ -221,8 +152,7 @@ export default function QodrivaHero() {
           className="qh-floating-tag qh-floating-tag--bottom"
           aria-hidden="true"
         >
-          <span>↗</span>
-          PROGRESS DETECTED
+          <span>↗</span> PROGRESS DETECTED
         </div>
       </div>
     </section>
